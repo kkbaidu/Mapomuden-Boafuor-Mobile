@@ -1,21 +1,53 @@
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
+import { Stack } from 'expo-router';
 
 export default function AuthLayout() {
   return (
-    <>
-      <StatusBar style="dark" backgroundColor="#ffffff" />
-      <Stack
-        screenOptions={{
+    <Stack>
+      <Stack.Screen
+        name="login"
+        options={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#ffffff" },
         }}
-      >
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="forgot-password" />
-        <Stack.Screen name="verify-otp" />
-      </Stack>
-    </>
+      />
+      <Stack.Screen
+        name="register"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="forgot-password"
+        options={{
+          title: 'Reset Password',
+          headerTintColor: '#3B82F6',
+          headerShown: false,
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }}
+      />
+      <Stack.Screen
+        name="verify-otp"
+        options={{
+          title: 'Verify OTP',
+          headerTintColor: '#3B82F6',
+          headerShown: false,
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }}
+      />
+      <Stack.Screen
+        name="reset-password"
+        options={{
+          title: 'Reset Password',
+          headerTintColor: '#3B82F6',
+          headerShown: false,
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }}
+      />
+    </Stack>
   );
 }
