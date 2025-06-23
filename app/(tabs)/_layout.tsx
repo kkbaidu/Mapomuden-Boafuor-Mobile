@@ -15,7 +15,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#1e40af',
+        tabBarActiveTintColor: '#10B981',
         tabBarInactiveTintColor: '#6b7280',
         tabBarShowLabel: true,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -48,22 +48,22 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Symptoms Tab */}
-      {/* <Tabs.Screen
-        name="symptoms"
+      {/* Appointments Tab */}
+      <Tabs.Screen
+        name="appointments/index"
         options={{
-          title: 'Symptoms',
+          title: 'Appointments',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <MaterialIcons 
-                name={focused ? 'health-and-safety' : 'health-and-safety'} 
-                size={24} 
+              <FontAwesome5 
+                name="calendar-alt"
+                size={20} 
                 color={focused ? '#ffffff' : color} 
               />
             </View>
           ),
         }}
-      /> */}
+      />
 
       {/* Chat Tab */}
       <Tabs.Screen
@@ -82,43 +82,9 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Appointments Tab */}
-      <Tabs.Screen
-        name="appointments"
-        options={{
-          title: 'Appointments',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <FontAwesome5 
-                name={focused ? 'calendar-check' : 'calendar-alt'} 
-                size={20} 
-                color={focused ? '#ffffff' : color} 
-              />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Prescriptions Tab */}
-      {/* <Tabs.Screen
-        name="prescriptions"
-        options={{
-          title: 'Prescriptions',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <FontAwesome5 
-                name={focused ? 'prescription-bottle-alt' : 'prescription-bottle'} 
-                size={20} 
-                color={focused ? '#ffffff' : color} 
-              />
-            </View>
-          ),
-        }}
-      /> */}
-
       {/* Profile Tab */}
       <Tabs.Screen
-        name="profile"
+        name="profile/index"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
@@ -130,6 +96,21 @@ export default function TabsLayout() {
               />
             </View>
           ),
+        }}
+      />
+
+      {/* Hidden Tabs - These won't appear in the tab bar */}
+      <Tabs.Screen
+        name="symptoms/index"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="prescriptions/index"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
@@ -183,10 +164,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   iconContainerActive: {
-    backgroundColor: '#1e40af',
+    backgroundColor: '#10B981',
     ...Platform.select({
       ios: {
-        shadowColor: '#1e40af',
+        shadowColor: '#10B981',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,

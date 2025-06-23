@@ -3,7 +3,7 @@ import axios from 'axios';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
-const API_BASE_URL = "http://10.21.17.237:3000/api";  {/* "http://192.168.0.64:3000/api" */}
+const API_BASE_URL = "http://192.168.0.65:3000/api";  {/* "http://10.21.17.237:3000/api" */}
 
 export interface User {
   id: string;
