@@ -1,6 +1,7 @@
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const API_BASE_URL = "http://192.168.0.65:3000/api";
+const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
 
 interface Message {
   id: string;
@@ -48,12 +49,25 @@ export default function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const { session_id } = useLocalSearchParams<{ 
+      session_id: string
+    }>();
+
   // Initialize chat session
   useEffect(() => {
     if (isAuthenticated && token) {
-      initializeChatSession();
+      initializeChatSession(true);
     }
   }, [isAuthenticated, token]);
+
+  // If session_id is provided, load that session
+  useEffect(() => {
+    console.log("Session id: "+ session_id)
+  if (session_id && isAuthenticated && token) {
+    setSessionId(session_id as string);
+    initializeChatSession(false, session_id as string); // Pass sessionId
+  }
+}, [session_id, isAuthenticated, token]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -64,45 +78,46 @@ export default function ChatScreen() {
     }
   }, [messages]);
 
-  const initializeChatSession = async () => {
-    try {
-      setIsLoading(true);
-      const response = await axios.post(
-        `${API_BASE_URL}/chat/session`,
-        { title: 'Health Chat' },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+  const initializeChatSession = async (newSession: boolean, existingSessionId?: string) => {
+  try {
+    setIsLoading(true);
+    
+    const requestBody = newSession 
+      ? { title: 'Health Chat', newSession: true }
+      : { sessionId: existingSessionId || sessionId }; // Use existing or current sessionId
 
-      const { chatSession } = response.data;
-      setSessionId(chatSession._id);
-      
-      // Transform messages for display
-      const transformedMessages = chatSession.messages.map((msg: any, index: number) => ({
-        id: `${index}`,
-        sender: msg.sender === 'AI' || msg.sender === 'ai' ? 'ai' : 'user',
-        content: msg.content,
-        timestamp: new Date(msg.timestamp),
-        type: msg.type?.toLowerCase() || 'text',
-        metadata: msg.metadata
-      }));
-      
-      setMessages(transformedMessages);
-    } catch (error) {
-      console.error('Failed to initialize chat session:', error);
-      Alert.alert('Error', 'Failed to start chat session. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const response = await axios.post(
+      `${base_url}/chat/session`,
+      requestBody,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    const { chatSession } = response.data;
+    setSessionId(chatSession._id);
+    
+    // Transform messages for display
+    const transformedMessages = chatSession.messages.map((msg: any, index: number) => ({
+      id: `${index}`,
+      sender: msg.sender === 'AI' || msg.sender === 'ai' ? 'ai' : 'user',
+      content: msg.content,
+      timestamp: new Date(msg.timestamp),
+      type: msg.type?.toLowerCase() || 'text',
+      metadata: msg.metadata
+    }));
+    
+    setMessages(transformedMessages);
+  } catch (error) {
+    console.error('Failed to initialize chat session:', error);
+    Alert.alert('Error', 'Failed to start chat session. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const sendMessage = async () => {
-
-    // console.log("Send AI message")
-
     if (!inputText.trim() || !sessionId || isTyping) return
-
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -121,7 +136,7 @@ export default function ChatScreen() {
 
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/chat/message`,
+        `${base_url}/chat/message`,
         {
           sessionId,
           message: messageToSend,
@@ -204,7 +219,7 @@ export default function ChatScreen() {
               {formatTime(message.timestamp)}
               {message.metadata?.confidence && (
                 <Text className="ml-2">
-                  • {Math.round(message.metadata.confidence * 100)}% confidence
+                  • {Math.round(message.metadata.confidence * 1)}% confidence
                 </Text>
               )}
             </Text>

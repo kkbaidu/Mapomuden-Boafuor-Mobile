@@ -3,7 +3,8 @@ import axios from 'axios';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
-const API_BASE_URL = "http://192.168.0.65:3000/api";  {/* "http://10.21.17.237:3000/api" */}
+
+const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api'; 
 
 export interface User {
   id: string;
@@ -44,7 +45,7 @@ export const useAuth = () => {
         // Verify token with backend
         try {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          const response = await axios.get(`${API_BASE_URL}/auth/verify`);
+          const response = await axios.get(`${base_url}/auth/verify`);
           
           setAuthState({
             user: response.data.user || user,
@@ -77,7 +78,7 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const response = await axios.post(`${base_url}/auth/login`, {
         email,
         password,
       });
@@ -125,7 +126,7 @@ export const useAuth = () => {
   }) => {
     try {
       // 10.21.18.10
-      const response = await axios.post(`${API_BASE_URL}/auth/register`
+      const response = await axios.post(`${base_url}/auth/register`
         , {
         ...userData,
         role: userData.role || 'patient',
@@ -191,7 +192,7 @@ export const useAuth = () => {
 
   const updateUser = async (userData: Partial<User>) => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/auth/profile`, userData);
+      const response = await axios.put(`${base_url}/auth/profile`, userData);
       
       const updatedUser = { ...authState.user, ...response.data.user };
       
@@ -216,7 +217,7 @@ export const useAuth = () => {
 
   const forgotPassword = async (email: string) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
+      const response = await axios.post(`${base_url}/auth/forgot-password`, { email });
       return { 
         success: true, 
         message: response.data.message,
@@ -233,7 +234,7 @@ export const useAuth = () => {
 
   const verifyResetOTP = async (email: string, otp: string) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/verify-reset-otp`, { 
+      const response = await axios.post(`${base_url}/auth/verify-reset-otp`, { 
         email, 
         otp 
       });
@@ -254,7 +255,7 @@ export const useAuth = () => {
 
   const resetPassword = async (resetToken: string, password: string) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/reset-password`, { 
+      const response = await axios.post(`${base_url}/auth/reset-password`, { 
         resetToken, 
         password 
       });
@@ -281,7 +282,7 @@ export const useAuth = () => {
 
   const resendResetOTP = async (email: string) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/resend-reset-otp`, { email });
+      const response = await axios.post(`${base_url}/auth/resend-reset-otp`, { email });
       return { success: true, message: response.data.message };
     } catch (error: any) {
       console.error('Resend OTP failed:', error);
@@ -294,7 +295,7 @@ export const useAuth = () => {
 
   const verifyOTP = async (email: string, otp: string) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
+      const response = await axios.post(`${base_url}/auth/verify-otp`, {
         email,
         otp,
       });

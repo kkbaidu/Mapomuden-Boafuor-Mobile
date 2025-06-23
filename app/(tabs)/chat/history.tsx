@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const API_BASE_URL = "http://192.168.0.65:3000/api";
+const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
 
 interface ChatSession {
   _id: string;
@@ -41,6 +41,7 @@ export default function ChatHistoryScreen() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
     limit: 10,
@@ -63,7 +64,7 @@ export default function ChatHistoryScreen() {
       }
 
       const response = await axios.get(
-        `${API_BASE_URL}/chat/history?limit=10&offset=0`,
+        `${base_url}/chat/history?limit=10&offset=0`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -86,7 +87,7 @@ export default function ChatHistoryScreen() {
 
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/chat/history?limit=${pagination.limit}&offset=${pagination.offset + pagination.limit}`,
+        `${base_url}/chat/history?limit=${pagination.limit}&offset=${pagination.offset + pagination.limit}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -97,6 +98,36 @@ export default function ChatHistoryScreen() {
       setPagination(newPagination);
     } catch (error) {
       console.error('Failed to load more sessions:', error);
+    }
+  };
+
+  const createNewSession = async () => {
+    if (isCreatingSession) return;
+
+    try {
+      setIsCreatingSession(true);
+      
+      // const response = await axios.post(
+      //   `${base_url}/chat/session`,
+      //   { title: `Health Chat ${new Date().toLocaleDateString()}` },
+      //   {
+      //     headers: { Authorization: `Bearer ${token}` }
+      //   }
+      // );
+
+      // const { chatSession } = response.data;
+      
+      // Navigate to chat screen with new session
+      router.replace({
+        pathname: '/chat',
+        // params: { sessionId: chatSession._id }
+      });
+      
+    } catch (error) {
+      console.error('Failed to create new session:', error);
+      Alert.alert('Error', 'Failed to create new chat session. Please try again.');
+    } finally {
+      setIsCreatingSession(false);
     }
   };
 
@@ -132,10 +163,12 @@ export default function ChatHistoryScreen() {
     return lastMessage.sender === 'USER' ? `You: ${preview}` : preview;
   };
 
-  const handleSessionPress = (sessionId: string) => {
-    // Navigate back to chat with this session
-    router.back();
-    // TODO: Pass sessionId to chat screen to load specific session
+  const handleSessionPress = (session_id: string) => {
+    // Navigate to chat with this session
+    router.replace({
+      pathname: '/(tabs)/chat',
+      params: { session_id }
+    });
   };
 
   const renderChatSession = (session: ChatSession) => {
@@ -193,10 +226,15 @@ export default function ChatHistoryScreen() {
       </Text>
       
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={createNewSession}
+        disabled={isCreatingSession}
         className="bg-blue-600 rounded-full px-6 py-3"
       >
-        <Text className="text-white font-semibold">Start Chatting</Text>
+        {isCreatingSession ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text className="text-white font-semibold">Start New Chat</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -208,11 +246,32 @@ export default function ChatHistoryScreen() {
     </View>
   );
 
+  const renderHeader = () => (
+    <View className="bg-white px-4 py-3 border-b border-gray-200 flex-row items-center justify-between">
+      <Text className="text-lg font-semibold text-gray-800">Chat History</Text>
+      
+      {/* <TouchableOpacity
+        onPress={createNewSession}
+        disabled={isCreatingSession}
+        className="w-10 h-10 rounded-full bg-blue-600 items-center justify-center shadow-sm active:bg-blue-700"
+      >
+        {isCreatingSession ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Ionicons name="add" size={24} color="white" />
+        )}
+      </TouchableOpacity> */}
+    </View>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      {/* Header Stats */}
+      {/* Header with Plus Icon */}
+      {renderHeader()}
+
+      {/* Stats */}
       {!isLoading && chatSessions.length > 0 && (
-        <View className="bg-white px-4 py-3 border-b border-gray-200">
+        <View className="bg-white px-4 py-2 border-b border-gray-100">
           <Text className="text-sm text-gray-600">
             {pagination.total} total conversations
           </Text>
