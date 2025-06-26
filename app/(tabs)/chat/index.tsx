@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
@@ -180,60 +181,67 @@ export default function ChatScreen() {
   };
 
   const renderMessage = (message: Message) => {
-    const isUser = message.sender === 'user';
-    
-    return (
-      <View
-        key={message.id}
-        className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}
-      >
-        <View className="flex-row items-end max-w-[80%]">
-          {!isUser && (
-            <View className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-green-500 items-center justify-center mr-2">
-              <Ionicons name="medical" size={16} color="white" />
-            </View>
-          )}
-          
-          <View>
-            <View
-              className={`rounded-2xl px-4 py-3 ${
-                isUser
-                  ? 'bg-blue-600 rounded-br-md'
-                  : 'bg-gray-100 rounded-bl-md border border-gray-200'
-              }`}
-            >
-              <Text
-                className={`text-base leading-5 ${
-                  isUser ? 'text-white' : 'text-gray-800'
-                }`}
-              >
-                {message.content}
-              </Text>
-            </View>
-            
-            <Text
-              className={`text-xs text-gray-500 mt-1 ${
-                isUser ? 'text-right' : 'text-left'
-              }`}
-            >
-              {formatTime(message.timestamp)}
-              {message.metadata?.confidence && (
-                <Text className="ml-2">
-                  • {Math.round(message.metadata.confidence * 1)}% confidence
-                </Text>
-              )}
-            </Text>
+  const isUser = message.sender === 'user';
+
+  return (
+    <View
+      key={message.id}
+      className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}
+    >
+      <View className="flex-row items-end max-w-[80%]">
+        {!isUser && (
+          <View className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-green-500 items-center justify-center mr-2">
+            <Ionicons name="medical" size={16} color="white" />
           </View>
-          
-          {isUser && (
-            <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center ml-2">
-              <Ionicons name="person" size={16} color="white" />
-            </View>
-          )}
+        )}
+
+        <View>
+          <View
+            className={`rounded-2xl px-4 py-3 ${
+              isUser
+                ? 'bg-blue-600 rounded-br-md'
+                : 'bg-gray-100 rounded-bl-md border border-gray-200'
+            }`}
+          >
+            <Markdown
+              style={{
+                body: {
+                  color: isUser ? '#FFFFFF' : '#1F2937',
+                  fontSize: 16,
+                  lineHeight: 20,
+                },
+                bullet_list: { paddingLeft: 10 },
+                ordered_list: { paddingLeft: 10 },
+              }}
+            >
+              {message.content}
+            </Markdown>
+          </View>
+
+          <Text
+            className={`text-xs text-gray-500 mt-1 ${
+              isUser ? 'text-right' : 'text-left'
+            }`}
+          >
+            {formatTime(message.timestamp)}
+            {message.metadata?.confidence && (
+              <Text className="ml-2">
+                • {Math.round(message.metadata.confidence * 1)}% confidence
+              </Text>
+            )}
+          </Text>
         </View>
+
+        {isUser && (
+          <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center ml-2">
+            <Ionicons name="person" size={16} color="white" />
+          </View>
+        )}
       </View>
-    );
-  };
+    </View>
+  );
+};
+
 
   const renderTypingIndicator = () => {
     if (!isTyping) return null;

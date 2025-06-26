@@ -6,12 +6,22 @@ import { useEffect, useState } from 'react';
 
 const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api'; 
 
+export enum UserRole {
+  PATIENT = 'patient',
+  DOCTOR = 'doctor',
+  ADMIN = 'admin',
+}
+
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'patient' | 'doctor';
-  avatar?: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
+  password: string;
+  role: UserRole;
+  roleApproved: boolean;
+  gender: 'male' | 'female';
+  location: string;
 }
 
 export interface AuthState {
