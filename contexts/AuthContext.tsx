@@ -18,6 +18,7 @@ interface AuthContextType extends AuthState {
   verifyResetOTP: (email: string, otp: string) => Promise<{ success: boolean; resetToken?: string; message?:string; error?: string }>;
   resendResetOTP: (email: string) => Promise<{ success: boolean; message?:string; error?: string }>;
   checkAuthStatus: () => Promise<void>;
+  fetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

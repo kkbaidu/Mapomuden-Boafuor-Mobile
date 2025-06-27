@@ -20,8 +20,14 @@ export interface User {
   password: string;
   role: UserRole;
   roleApproved: boolean;
-  gender: 'male' | 'female';
+  gender: 'male' | 'female' | '';
   location: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  bloodGroup: string;
 }
 
 export interface AuthState {
@@ -202,9 +208,9 @@ export const useAuth = () => {
 
   const updateUser = async (userData: Partial<User>) => {
     try {
-      const response = await axios.put(`${base_url}/auth/profile`, userData);
+      const response = await axios.put(`${base_url}/auth/user`, userData);
       
-      const updatedUser = { ...authState.user, ...response.data.user };
+      const updatedUser = response.data.user;
       
       // Update stored user data
       await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
@@ -337,6 +343,24 @@ export const useAuth = () => {
     }
   };
 
+  const fetchUser = async () => {
+    try {
+    const response = await axios.get(`${base_url}/auth/user`, {
+      headers: {
+        Authorization: `Bearer ${authState.token}`,
+      }
+    })
+
+    setAuthState({
+      ...authState,
+      user: response?.data
+      });
+  
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+    }
+  }
+
   return {
     ...authState,
     login,
@@ -349,5 +373,6 @@ export const useAuth = () => {
     resendResetOTP,
     verifyOTP,
     checkAuthStatus,
+    fetchUser
   };
 };

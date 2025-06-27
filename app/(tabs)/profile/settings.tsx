@@ -1,5 +1,5 @@
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -23,6 +23,7 @@ export default function SettingsScreen() {
   const [biometricAuth, setBiometricAuth] = useState(false);
   const [dataSync, setDataSync] = useState(true);
   const [offlineMode, setOfflineMode] = useState(false);
+  const { user, logout, fetchUser } = useAuthContext();
 
   const handleLogout = () => {
     Alert.alert(
@@ -34,8 +35,7 @@ export default function SettingsScreen() {
           text: 'Logout',
           style: 'destructive',
           onPress: () => {
-            // Handle logout logic here
-            router.replace('/(auth)/login');
+            logout()
           },
         },
       ]

@@ -1,7 +1,8 @@
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useMedicalRecordsContext } from '@/contexts/MedicalRecordsContext';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -89,70 +90,27 @@ interface MedicalRecord {
 }
 
 export default function MedicalHistoryScreen() {
-  const [medicalRecord, setMedicalRecord] = useState<MedicalRecord | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<string>('');
-  const [formData, setFormData] = useState<any>({});
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const { token, isAuthenticated, user } = useAuthContext()
-
-  const fetchMedicalRecord = async () => {
-  try {
-    const response = await fetch(`${base_url}/medical-records`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Fix: Extract medicalRecord from the response object
-    setMedicalRecord(data.medicalRecord || data);
-
-  } catch (error) {
-    console.error('Error fetching medical record:', error);
-    Alert.alert('Error', 'Failed to load medical record');
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
-
-const updateMedicalRecord = async (updateData: any) => {
-  try {
-    const response = await fetch(`${base_url}/medical-records`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(updateData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Fix: Extract medicalRecord from the response object
-    setMedicalRecord(data.medicalRecord);
-    setModalVisible(false);
-    setFormData({});
-    
-    Alert.alert('Success', 'Medical record updated successfully');
-  } catch (error) {
-    console.error('Error updating medical record:', error);
-    Alert.alert('Error', 'Failed to update medical record');
-  }
-};
+  const {
+    fetchMedicalRecord,
+    updateMedicalRecord,
+    medicalRecord,
+    setMedicalRecord, 
+    loading, 
+    setLoading, 
+    refreshing, 
+    setRefreshing, 
+    activeTab, 
+    setActiveTab, 
+    modalVisible, 
+    setModalVisible, 
+    modalType, 
+    setModalType, 
+    formData, 
+    setFormData, 
+    showDatePicker, 
+    setShowDatePicker
+   } = useMedicalRecordsContext();
+  const { token, user } = useAuthContext();
 
   useEffect(() => {
     fetchMedicalRecord();
@@ -168,6 +126,82 @@ const updateMedicalRecord = async (updateData: any) => {
     setModalType(type);
     setFormData({});
     setModalVisible(true);
+  };
+
+  // Delete function for array items
+  const handleDeleteItem = (type: string, index: number) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete this ${type}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => deleteItem(type, index)
+        }
+      ]
+    );
+  };
+
+  const deleteItem = (type: string, index: number) => {
+    if (!medicalRecord) {
+      Alert.alert('Error', 'Medical record not found');
+      return;
+    }
+
+    // Create a deep copy to avoid mutation
+    let updateData = JSON.parse(JSON.stringify(medicalRecord));
+
+    switch (type) {
+      case 'allergy':
+        updateData.allergies.splice(index, 1);
+        break;
+      case 'condition':
+        updateData.medicalConditions.splice(index, 1);
+        break;
+      case 'medication':
+        updateData.currentMedications.splice(index, 1);
+        break;
+      case 'vital':
+        // For vitals, we need to use the dedicated delete endpoint
+        deleteVitalSigns(index);
+        return;
+      default:
+        Alert.alert('Error', 'Unknown item type');
+        return;
+    }
+
+    updateMedicalRecord(updateData);
+  };
+
+  // Delete vital signs using dedicated endpoint
+  const deleteVitalSigns = async (index: number) => {
+    try {
+      const vitalId = medicalRecord?.vitalSigns[index]._id;
+      if (!vitalId) {
+        Alert.alert('Error', 'Vital signs ID not found');
+        return;
+      }
+
+      const response = await fetch(`${base_url}/medical-records/vital-signs/${vitalId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        // Refresh the medical record to show updated vital signs
+        fetchMedicalRecord();
+        Alert.alert('Success', 'Vital signs deleted successfully');
+      } else {
+        throw new Error('Failed to delete vital signs');
+      }
+    } catch (error) {
+      console.error('Error deleting vital signs:', error);
+      Alert.alert('Error', 'Failed to delete vital signs');
+    }
   };
 
   const handleSave = () => {
@@ -682,18 +716,20 @@ const handleAddVitalSigns = async () => {
   </View>
 );
 
-  const renderAllergies = () => (
-    <SectionCard title="Allergies" onAdd={() => openAddModal('allergy')}>
-      {medicalRecord?.allergies && medicalRecord.allergies.length > 0 ? (
-        <View className="space-y-3 gap-y-2">
-          {medicalRecord.allergies.map((allergy, index) => (
-            <View key={index} className="bg-red-50 rounded-xl p-4 border-l-4 border-red-500">
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
-                  <Text className="font-semibold text-gray-800">{allergy.allergen}</Text>
-                  <Text className="text-gray-600 text-sm mt-1">{allergy.reaction}</Text>
-                </View>
-                <View className={`px-3 py-1 rounded-full ${
+// Add delete buttons to renderConditions - Replace the existing renderConditions function
+const renderAllergies = () => (
+  <SectionCard title="Allergies" onAdd={() => openAddModal('allergy')}>
+    {medicalRecord?.allergies && medicalRecord.allergies.length > 0 ? (
+      <View className="space-y-3 gap-y-2">
+        {medicalRecord.allergies.map((allergy, index) => (
+          <View key={index} className="bg-red-50 rounded-xl p-4 border-l-4 border-red-500">
+            <View className="flex-row justify-between items-start">
+              <View className="flex-1">
+                <Text className="font-semibold text-gray-800">{allergy.allergen}</Text>
+                <Text className="text-gray-600 text-sm mt-1">{allergy.reaction}</Text>
+              </View>
+              <View className="flex-row items-center">
+                <View className={`px-3 py-1 rounded-full mr-2 ${
                   allergy.severity === 'severe' ? 'bg-red-100' :
                   allergy.severity === 'moderate' ? 'bg-yellow-100' : 'bg-green-100'
                 }`}>
@@ -704,33 +740,41 @@ const handleAddVitalSigns = async () => {
                     {allergy.severity.toUpperCase()}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => handleDeleteItem('allergy', index)}
+                  className="bg-red-100 p-2 rounded-full"
+                >
+                  <Ionicons name="trash" size={16} color="#DC2626" />
+                </TouchableOpacity>
               </View>
             </View>
-          ))}
-        </View>
-      ) : (
-        <EmptyState message="No allergies recorded" icon="shield-checkmark" />
-      )}
-    </SectionCard>
-  );
+          </View>
+        ))}
+      </View>
+    ) : (
+      <EmptyState message="No allergies recorded" icon="shield-checkmark" />
+    )}
+  </SectionCard>
+);
 
-  const renderConditions = () => (
-    <SectionCard title="Medical Conditions" onAdd={() => openAddModal('condition')}>
-      {medicalRecord?.medicalConditions && medicalRecord.medicalConditions.length > 0 ? (
-        <View className="space-y-3 gap-y-2">
-          {medicalRecord.medicalConditions.map((condition, index) => (
-            <View key={index} className="bg-blue-50 rounded-xl p-4">
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
-                  <Text className="font-semibold text-gray-800">{condition.condition}</Text>
-                  <Text className="text-gray-600 text-sm mt-1">
-                    Diagnosed: {new Date(condition.diagnosedDate).toLocaleDateString()}
-                  </Text>
-                  {condition.notes && (
-                    <Text className="text-gray-600 text-sm mt-2">{condition.notes}</Text>
-                  )}
-                </View>
-                <View className={`px-3 py-1 rounded-full ${
+const renderConditions = () => (
+  <SectionCard title="Medical Conditions" onAdd={() => openAddModal('condition')}>
+    {medicalRecord?.medicalConditions && medicalRecord.medicalConditions.length > 0 ? (
+      <View className="space-y-3 gap-y-2">
+        {medicalRecord.medicalConditions.map((condition, index) => (
+          <View key={index} className="bg-blue-50 rounded-xl p-4">
+            <View className="flex-row justify-between items-start">
+              <View className="flex-1">
+                <Text className="font-semibold text-gray-800">{condition.condition}</Text>
+                <Text className="text-gray-600 text-sm mt-1">
+                  Diagnosed: {new Date(condition.diagnosedDate).toLocaleDateString()}
+                </Text>
+                {condition.notes && (
+                  <Text className="text-gray-600 text-sm mt-2">{condition.notes}</Text>
+                )}
+              </View>
+              <View className="flex-row items-center">
+                <View className={`px-3 py-1 rounded-full mr-2 ${
                   condition.status === 'active' ? 'bg-red-100' :
                   condition.status === 'chronic' ? 'bg-yellow-100' : 'bg-green-100'
                 }`}>
@@ -741,83 +785,108 @@ const handleAddVitalSigns = async () => {
                     {condition.status.toUpperCase()}
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => handleDeleteItem('condition', index)}
+                  className="bg-red-100 p-2 rounded-full"
+                >
+                  <Ionicons name="trash" size={16} color="#DC2626" />
+                </TouchableOpacity>
               </View>
             </View>
-          ))}
-        </View>
-      ) : (
-        <EmptyState message="No medical conditions recorded" icon="medical" />
-      )}
-    </SectionCard>
-  );
+          </View>
+        ))}
+      </View>
+    ) : (
+      <EmptyState message="No medical conditions recorded" icon="medical" />
+    )}
+  </SectionCard>
+);
 
-  const renderMedications = () => (
-    <SectionCard title="Current Medications" onAdd={() => openAddModal('medication')}>
-      {medicalRecord?.currentMedications && medicalRecord.currentMedications.length > 0 ? (
-        <View className="space-y-3 gap-y-2">
-          {medicalRecord.currentMedications.map((medication, index) => (
-            <View key={index} className="bg-green-50 rounded-xl p-4">
-              <Text className="font-semibold text-gray-800">{medication}</Text>
+// Add delete buttons to renderMedications - Replace the existing renderMedications function
+
+const renderMedications = () => (
+  <SectionCard title="Current Medications" onAdd={() => openAddModal('medication')}>
+    {medicalRecord?.currentMedications && medicalRecord.currentMedications.length > 0 ? (
+      <View className="space-y-3 gap-y-2">
+        {medicalRecord.currentMedications.map((medication, index) => (
+          <View key={index} className="bg-green-50 rounded-xl p-4">
+            <View className="flex-row justify-between items-center">
+              <Text className="font-semibold text-gray-800 flex-1">{medication}</Text>
+              <TouchableOpacity
+                onPress={() => handleDeleteItem('medication', index)}
+                className="bg-red-100 p-2 rounded-full ml-3"
+              >
+                <Ionicons name="trash" size={16} color="#DC2626" />
+              </TouchableOpacity>
             </View>
-          ))}
-        </View>
-      ) : (
-        <EmptyState message="No current medications" icon="medical" />
-      )}
-    </SectionCard>
-  );
+          </View>
+        ))}
+      </View>
+    ) : (
+      <EmptyState message="No current medications" icon="medical" />
+    )}
+  </SectionCard>
+);
 
-  const renderVitals = () => (
-    <SectionCard title="Vital Signs History" onAdd={() => openAddModal('vitals')}>
-      {medicalRecord?.vitalSigns && medicalRecord.vitalSigns.length > 0 ? (
-        <View className="space-y-4">
-          {medicalRecord.vitalSigns.slice().reverse().map((vital, index) => (
-            <View key={index} className="bg-blue-50 rounded-xl p-4">
-              <View className="grid grid-cols-2 gap-4">
-                {vital.bloodPressure && (
-                  <View className="bg-white rounded-lg p-3">
-                    <Text className="text-gray-600 text-sm">Blood Pressure</Text>
-                    <Text className="font-bold text-lg">
-                      {vital.bloodPressure.systolic}/{vital.bloodPressure.diastolic}
-                    </Text>
-                    <Text className="text-gray-500 text-xs">mmHg</Text>
-                  </View>
-                )}
-                {vital.heartRate && (
-                  <View className="bg-white rounded-lg p-3">
-                    <Text className="text-gray-600 text-sm">Heart Rate</Text>
-                    <Text className="font-bold text-lg">{vital.heartRate}</Text>
-                    <Text className="text-gray-500 text-xs">bpm</Text>
-                  </View>
-                )}
-                {vital.temperature && (
-                  <View className="bg-white rounded-lg p-3">
-                    <Text className="text-gray-600 text-sm">Temperature</Text>
-                    <Text className="font-bold text-lg">{vital.temperature}</Text>
-                    <Text className="text-gray-500 text-xs">°C</Text>
-                  </View>
-                )}
-                {vital.weight && (
-                  <View className="bg-white rounded-lg p-3">
-                    <Text className="text-gray-600 text-sm">Weight</Text>
-                    <Text className="font-bold text-lg">{vital.weight}</Text>
-                    <Text className="text-gray-500 text-xs">kg</Text>
-                  </View>
-                )}
-              </View>
-              {vital.createdAt && (
-                <Text className="text-gray-400 text-xs mt-3">
-                  {new Date(vital.createdAt).toLocaleString()}
-                </Text>
+// Add delete buttons to renderVitals - Replace the existing renderVitals function
+
+const renderVitals = () => (
+  <SectionCard title="Vital Signs History" onAdd={() => openAddModal('vitals')}>
+    {medicalRecord?.vitalSigns && medicalRecord.vitalSigns.length > 0 ? (
+      <View className="space-y-4 gap-y-4">
+        {medicalRecord.vitalSigns.slice().reverse().map((vital, index) => (
+          <View key={index} className="bg-blue-50 rounded-xl p-4">
+            <View className="flex-row justify-between items-start mb-3">
+              <Text className="text-gray-600 text-sm font-medium">
+                {vital.createdAt && new Date(vital.createdAt).toLocaleString()}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleDeleteItem('vital', medicalRecord.vitalSigns.length - 1 - index)}
+                className="bg-red-100 p-1.5 rounded-full"
+              >
+                <Ionicons name="trash" size={14} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+            <View className="grid grid-cols-2 gap-4">
+              {vital.bloodPressure && (
+                <View className="bg-white rounded-lg p-3">
+                  <Text className="text-gray-600 text-sm">Blood Pressure</Text>
+                  <Text className="font-bold text-lg">
+                    {vital.bloodPressure.systolic}/{vital.bloodPressure.diastolic}
+                  </Text>
+                  <Text className="text-gray-500 text-xs">mmHg</Text>
+                </View>
+              )}
+              {vital.heartRate && (
+                <View className="bg-white rounded-lg p-3">
+                  <Text className="text-gray-600 text-sm">Heart Rate</Text>
+                  <Text className="font-bold text-lg">{vital.heartRate}</Text>
+                  <Text className="text-gray-500 text-xs">bpm</Text>
+                </View>
+              )}
+              {vital.temperature && (
+                <View className="bg-white rounded-lg p-3">
+                  <Text className="text-gray-600 text-sm">Temperature</Text>
+                  <Text className="font-bold text-lg">{vital.temperature}</Text>
+                  <Text className="text-gray-500 text-xs">°C</Text>
+                </View>
+              )}
+              {vital.weight && (
+                <View className="bg-white rounded-lg p-3">
+                  <Text className="text-gray-600 text-sm">Weight</Text>
+                  <Text className="font-bold text-lg">{vital.weight}</Text>
+                  <Text className="text-gray-500 text-xs">kg</Text>
+                </View>
               )}
             </View>
-          ))}
-        </View>
-      ) : (
-        <EmptyState message="No vital signs recorded" icon="pulse" />
-      )}
-    </SectionCard>
-  );
+          </View>
+        ))}
+      </View>
+    ) : (
+      <EmptyState message="No vital signs recorded" icon="pulse" />
+    )}
+  </SectionCard>
+);
 
   const renderAddModal = () => (
   <Modal
@@ -984,7 +1053,7 @@ const handleAddVitalSigns = async () => {
                 <View className="flex-row space-x-2">
                   <TextInput
                     placeholder="Systolic"
-                    value={formData.systolic || ''}
+                    value={formData.systolic?.toString() || undefined}
                     onChangeText={(text) => setFormData({
                       ...formData, 
                       bloodPressure: {
@@ -998,7 +1067,7 @@ const handleAddVitalSigns = async () => {
                   />
                   <TextInput
                     placeholder="Diastolic"
-                    value={formData.diastolic || ''}
+                    value={formData.diastolic?.toString() || undefined}
                     onChangeText={(text) => setFormData({
                       ...formData, 
                       bloodPressure: {
@@ -1015,7 +1084,7 @@ const handleAddVitalSigns = async () => {
                   placeholder="Heart Rate (bpm)"
                   value={formData.heartRate?.toString() || ''}
                   onChangeText={(text) => setFormData({...formData, heartRate: parseInt(text) || undefined})}
-                  className="border border-gray-300 rounded-xl p-4"
+                  className="border border-gray-300 rounded-xl p-4 placeholder:text-gray-400"
                   keyboardType="numeric"
                   returnKeyType="next"
                 />

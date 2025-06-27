@@ -1,21 +1,22 @@
 // app/(tabs)/profile/index.tsx
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useMedicalRecordsContext } from '@/contexts/MedicalRecordsContext';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Dimensions,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../../hooks/useAuth';
 
 const { width } = Dimensions.get('window');
 
@@ -44,64 +45,21 @@ interface MedicalRecord {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [medicalRecord, setMedicalRecord] = useState<MedicalRecord | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { user, logout, fetchUser } = useAuthContext();
+  const {
+      fetchMedicalRecord,
+      medicalRecord,
+     } = useMedicalRecordsContext();
 
   useEffect(() => {
-    fetchProfile();
+    fetchUser();
     fetchMedicalRecord();
   }, []);
 
-  const fetchProfile = async () => {
-    try {
-      // API call to fetch user profile
-      // const response = await getUserProfile();
-      // setProfile(response.data);
-      
-      // Mock data for demonstration
-      setProfile({
-        id: '1',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        phone: '+233 24 123 4567',
-        gender: 'male',
-        location: 'Accra, Ghana',
-        role: 'patient'
-      });
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
-
-  const fetchMedicalRecord = async () => {
-    try {
-      // API call to fetch medical record
-      // const response = await getMedicalRecord();
-      // setMedicalRecord(response.data.medicalRecord);
-      
-      // Mock data for demonstration
-      setMedicalRecord({
-        bloodGroup: 'O+',
-        allergies: [{ allergen: 'Peanuts', reaction: 'Hives', severity: 'moderate' }],
-        medicalConditions: [],
-        currentMedications: ['Paracetamol'],
-        emergencyContact: {
-          name: 'Jane Doe',
-          phone: '+233 24 765 4321',
-          relationship: 'Sister'
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching medical record:', error);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfile(), fetchMedicalRecord()]);
+    await Promise.all([fetchUser(), fetchMedicalRecord()]);
     setRefreshing(false);
   };
 
@@ -135,7 +93,7 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
-  if (!profile) {
+  if (!user) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -167,19 +125,19 @@ export default function ProfileScreen() {
                 style={styles.avatar}
               >
                 <Text style={styles.avatarText}>
-                  {profile.firstName[0]}{profile.lastName[0]}
+                  {user?.firstName[0]}{user?.lastName[0]}
                 </Text>
               </LinearGradient>
             </View>
             <Text style={styles.userName}>
-              {profile.firstName} {profile.lastName}
+              {user?.firstName} {user?.lastName}
             </Text>
             <Text style={styles.userRole}>
-              {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+              {(user?.role as string)?.charAt(0).toUpperCase() + user?.role.slice(1)}
             </Text>
             <View style={styles.locationContainer}>
               <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.location}>{profile.location}</Text>
+              <Text style={styles.location}>{user?.location}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -198,7 +156,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{medicalRecord?.bloodGroup || 'N/A'}</Text>
+              <Text style={styles.statNumber}>{user?.bloodGroup || 'N/A'}</Text>
               <Text style={styles.statLabel}>Blood Group</Text>
             </View>
           </BlurView>
@@ -229,7 +187,7 @@ export default function ProfileScreen() {
           
           <ProfileCard
             title="Email"
-            subtitle={profile.email}
+            subtitle={user?.email}
             icon={{ name: 'mail-outline', color: '#6366F1' }}
             onPress={() => {}}
             rightIcon="copy-outline"
@@ -237,7 +195,7 @@ export default function ProfileScreen() {
           
           <ProfileCard
             title="Phone"
-            subtitle={profile.phone}
+            subtitle={user?.phone}
             icon={{ name: 'call-outline', color: '#10B981' }}
             onPress={() => {}}
             rightIcon="copy-outline"

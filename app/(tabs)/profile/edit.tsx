@@ -1,20 +1,24 @@
 // app/(tabs)/profile/edit.tsx
+import { useAuthContext } from '@/contexts/AuthContext';
+import { User } from '@/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Formik } from 'formik';
+import React from 'react';
 import {
-    Alert,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { SelectList } from "react-native-dropdown-select-list";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Yup from 'yup';
 
 const { width } = Dimensions.get('window');
 
@@ -23,100 +27,130 @@ interface ProfileForm {
   lastName: string;
   email: string;
   phone: string;
-  gender: '' | 'male' | 'female' | 'Gender is required';
+  gender: '' | 'male' | 'female';
   location: string;
+  bloodGroup: string;
+  emergencyContact: {
+    name: string;
+    relationship?: string;
+    phone: string;
+  };
 }
+
+// Validation schema using Yup
+const validationSchema = Yup.object().shape({
+  firstName: Yup.string()
+    .trim()
+    .required('First name is required')
+    .min(2, 'First name must be at least 2 characters'),
+  
+  lastName: Yup.string()
+    .trim()
+    .required('Last name is required')
+    .min(2, 'Last name must be at least 2 characters'),
+  
+  email: Yup.string()
+    .trim()
+    .required('Email is required')
+    .email('Please enter a valid email address'),
+  
+  phone: Yup.string()
+    .trim()
+    .required('Phone number is required')
+    .matches(/^[+]?[\d\s\-\(\)]+$/, 'Please enter a valid phone number'),
+  
+  gender: Yup.string()
+    .required('Gender is required')
+    .oneOf(['male', 'female'], 'Please select a valid gender'),
+  
+  location: Yup.string()
+    .trim()
+    .required('Location is required')
+    .min(3, 'Location must be at least 3 characters'),
+  
+  bloodGroup: Yup.string()
+    .required('Blood group is required')
+    .oneOf(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], 'Please select a valid blood group'),
+  
+  emergencyContact: Yup.object().shape({
+    name: Yup.string()
+      .trim()
+      .required('Emergency contact name is required')
+      .min(2, 'Name must be at least 2 characters'),
+    relationship: Yup.string()
+      .trim(),
+    phone: Yup.string()
+      .trim()
+      .required('Emergency contact phone is required')
+      .matches(/^[+]?[\d\s\-\(\)]+$/, 'Please enter a valid phone number'),
+  }),
+});
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const [form, setForm] = useState<ProfileForm>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    gender: '',
-    location: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof ProfileForm, string>>>({});
+  const { user, updateUser } = useAuthContext();
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const bloodGroups = [
+    { key: 'A+', value: 'A+' },
+    { key: 'A-', value: 'A-' },
+    { key: 'B+', value: 'B+' },
+    { key: 'B-', value: 'B-' },
+    { key: 'AB+', value: 'AB+' },
+    { key: 'AB-', value: 'AB-' },
+    { key: 'O+', value: 'O+' },
+    { key: 'O-', value: 'O-' },
+  ];
 
-  const fetchProfile = async () => {
-    try {
-      // API call to fetch user profile
-      // const response = await getUserProfile();
-      // setForm(response.data);
-      
-      // Mock data for demonstration
-      setForm({
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        phone: '+233 24 123 4567',
-        gender: 'male',
-        location: 'Accra, Ghana',
-      });
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
+  const genderOptions = [
+    { key: 'male', value: 'Male' },
+    { key: 'female', value: 'Female' },
+  ];
+
+  const relationshipOptions = [
+    { key: 'parent', value: 'Parent' },
+    { key: 'spouse', value: 'Spouse' },
+    { key: 'sibling', value: 'Sibling' },
+    { key: 'child', value: 'Child' },
+    { key: 'friend', value: 'Friend' },
+    { key: 'relative', value: 'Relative' },
+    { key: 'colleague', value: 'Colleague' },
+    { key: 'other', value: 'Other' },
+  ];
+
+  // Initial form values
+  const initialValues: ProfileForm = {
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    gender: user?.gender || '',
+    location: user?.location || '',
+    bloodGroup: user?.bloodGroup || '',
+    emergencyContact: {
+      name: user?.emergencyContact?.name || '',
+      relationship: user?.emergencyContact?.relationship || '',
+      phone: user?.emergencyContact?.phone || '',
+    },
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<ProfileForm> = {};
-
-    if (!form.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!form.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
-
-    if (!form.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (!form.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    }
-
-    if (!form.gender) {
-      newErrors.gender = 'Gender is required';
-    }
-
-    if (!form.location.trim()) {
-      newErrors.location = 'Location is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
+  const handleSubmit = async (values: ProfileForm, { setSubmitting }: any) => {
     try {
-      // API call to update profile
-      // await updateProfile(form);
+      const res = await updateUser(values as User);
       
-      Alert.alert(
-        'Success',
-        'Profile updated successfully',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      if (res.success) {
+        Alert.alert(
+          'Success',
+          'Profile updated successfully',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert('Error', res.error || 'Failed to update profile. Please try again.');
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -124,146 +158,284 @@ export default function EditProfileScreen() {
     label, 
     value, 
     onChangeText, 
+    onBlur,
     placeholder, 
     error,
+    touched,
     keyboardType = 'default',
     multiline = false 
   }: any) => (
     <View style={styles.inputContainer}>
       <Text style={styles.inputLabel}>{label}</Text>
       <TextInput
-        style={[styles.input, error && styles.inputError, multiline && styles.textArea]}
+        style={[
+          styles.input, 
+          error && touched && styles.inputError, 
+          multiline && styles.textArea
+        ]}
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
       />
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && touched && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <LinearGradient
-          colors={['#2563EB', '#10B981']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <Text style={styles.headerSubtitle}>Update your personal information</Text>
-        </LinearGradient>
-
-        {/* Form */}
-        <View style={styles.formContainer}>
-          <InputField
-            label="First Name"
-            value={form.firstName}
-            onChangeText={(text: string) => setForm({ ...form, firstName: text })}
-            placeholder="Enter your first name"
-            error={errors.firstName}
-          />
-
-          <InputField
-            label="Last Name"
-            value={form.lastName}
-            onChangeText={(text: string) => setForm({ ...form, lastName: text })}
-            placeholder="Enter your last name"
-            error={errors.lastName}
-          />
-
-          <InputField
-            label="Email"
-            value={form.email}
-            onChangeText={(text: string) => setForm({ ...form, email: text })}
-            placeholder="Enter your email address"
-            keyboardType="email-address"
-            error={errors.email}
-          />
-
-          <InputField
-            label="Phone"
-            value={form.phone}
-            onChangeText={(text: string) => setForm({ ...form, phone: text })}
-            placeholder="Enter your phone number"
-            keyboardType="phone-pad"
-            error={errors.phone}
-          />
-
-          {/* Gender Picker */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Gender</Text>
-            <View style={[styles.pickerContainer, errors.gender && styles.inputError]}>
-              <Picker
-                selectedValue={form.gender}
-                onValueChange={(value: any) => setForm({ ...form, gender: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select Gender" value="" />
-                <Picker.Item label="Male" value="male" />
-                <Picker.Item label="Female" value="female" />
-              </Picker>
-            </View>
-            {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
-          </View>
-
-          <InputField
-            label="Location"
-            value={form.location}
-            onChangeText={(text: string) => setForm({ ...form, location: text })}
-            placeholder="Enter your location"
-            error={errors.location}
-          />
-
-          {/* Emergency Contact Section */}
-          <View style={styles.sectionHeader}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#EF4444" />
-            <Text style={styles.sectionTitle}>Emergency Contact</Text>
-          </View>
-          
-          <TouchableOpacity style={styles.emergencyContactCard}>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Add Emergency Contact</Text>
-              <Text style={styles.cardSubtitle}>Set up an emergency contact for quick access</Text>
-            </View>
-            <Ionicons name="add-circle-outline" size={24} color="#2563EB" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Save Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={loading}
-          >
+      <Formik
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit}
+        enableReinitialize={true}
+      >
+        {({
+          values,
+          errors,
+          touched,
+          handleChange,
+          handleBlur,
+          handleSubmit,
+          setFieldValue,
+          isSubmitting,
+          isValid,
+        }) => (
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {/* Header */}
             <LinearGradient
-              colors={loading ? ['#9CA3AF', '#9CA3AF'] : ['#2563EB', '#10B981']}
+              colors={['#2563EB', '#10B981']}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.saveButtonGradient}
+              end={{ x: 1, y: 1 }}
+              style={styles.header}
             >
-              {loading ? (
-                <Text style={styles.saveButtonText}>Saving...</Text>
-              ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              )}
+              <Text style={styles.headerTitle}>Edit Profile</Text>
+              <Text style={styles.headerSubtitle}>Update your personal information</Text>
             </LinearGradient>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            {/* Form */}
+            <View style={styles.formContainer}>
+              <InputField
+                label="First Name"
+                value={values.firstName}
+                onChangeText={handleChange('firstName')}
+                onBlur={handleBlur('firstName')}
+                placeholder="Enter your first name"
+                error={errors.firstName}
+                touched={touched.firstName}
+              />
+
+              <InputField
+                label="Last Name"
+                value={values.lastName}
+                onChangeText={handleChange('lastName')}
+                onBlur={handleBlur('lastName')}
+                placeholder="Enter your last name"
+                error={errors.lastName}
+                touched={touched.lastName}
+              />
+
+              <InputField
+                label="Email"
+                value={values.email}
+                onChangeText={handleChange('email')}
+                onBlur={handleBlur('email')}
+                placeholder="Enter your email address"
+                keyboardType="email-address"
+                error={errors.email}
+                touched={touched.email}
+              />
+
+              <InputField
+                label="Phone"
+                value={values.phone}
+                onChangeText={handleChange('phone')}
+                onBlur={handleBlur('phone')}
+                placeholder="Enter your phone number"
+                keyboardType="phone-pad"
+                error={errors.phone}
+                touched={touched.phone}
+              />
+
+              {/* Gender Selector */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Gender</Text>
+                <View style={[
+                  styles.pickerContainer, 
+                  errors.gender && touched.gender && styles.inputError
+                ]}>
+                  <SelectList
+                    setSelected={(val: string) => setFieldValue('gender', val)}
+                    data={genderOptions}
+                    save="key"
+                    boxStyles={{ 
+                      borderColor: errors.gender && touched.gender ? "#EF4444" : "#D1D5DB",
+                      borderWidth: 0
+                    }}
+                    inputStyles={{ color: "black" }}
+                    dropdownStyles={{ backgroundColor: "white" }}
+                    dropdownTextStyles={{ color: "black" }}
+                    search={false}
+                    arrowicon={<Ionicons name="chevron-down-outline" size={24} color="#D1D5DB" />}
+                    defaultOption={
+                      values.gender
+                        ? { key: values.gender, value: values.gender.charAt(0).toUpperCase() + values.gender.slice(1) }
+                        : { key: '', value: 'Select Gender' }
+                    }
+                  />
+                </View>
+                {errors.gender && touched.gender && (
+                  <Text style={styles.errorText}>{errors.gender}</Text>
+                )}
+              </View>
+
+              {/* Blood Group Selector */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Blood Group</Text>
+                <View style={[
+                  styles.pickerContainer, 
+                  errors.bloodGroup && touched.bloodGroup && styles.inputError
+                ]}>
+                  <SelectList
+                    setSelected={(val: string) => setFieldValue('bloodGroup', val)}
+                    data={bloodGroups}
+                    save="key"
+                    boxStyles={{ 
+                      borderColor: errors.bloodGroup && touched.bloodGroup ? "#EF4444" : "#D1D5DB",
+                      borderWidth: 0
+                    }}
+                    inputStyles={{ color: "black" }}
+                    dropdownStyles={{ backgroundColor: "white" }}
+                    dropdownTextStyles={{ color: "black" }}
+                    search={false}
+                    arrowicon={<Ionicons name="chevron-down-outline" size={24} color="#D1D5DB" />}
+                    defaultOption={
+                      values.bloodGroup
+                        ? { key: values.bloodGroup, value: values.bloodGroup }
+                        : { key: '', value: 'Select blood group' }
+                    }
+                  />
+                </View>
+                {errors.bloodGroup && touched.bloodGroup && (
+                  <Text style={styles.errorText}>{errors.bloodGroup}</Text>
+                )}
+              </View>
+
+              <InputField
+                label="Location"
+                value={values.location}
+                onChangeText={handleChange('location')}
+                onBlur={handleBlur('location')}
+                placeholder="Enter your location"
+                error={errors.location}
+                touched={touched.location}
+              />
+
+              {/* Emergency Contact Section */}
+              <View style={styles.sectionHeader}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#EF4444" />
+                <Text style={styles.sectionTitle}>Emergency Contact</Text>
+              </View>
+              
+              <InputField
+                label="Emergency Contact Name"
+                value={values.emergencyContact.name}
+                onChangeText={handleChange('emergencyContact.name')}
+                onBlur={handleBlur('emergencyContact.name')}
+                placeholder="Enter emergency contact name"
+                error={errors.emergencyContact?.name}
+                touched={touched.emergencyContact?.name}
+              />
+
+              {/* Relationship Selector */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Relationship (Optional)</Text>
+                <View style={[
+                  styles.pickerContainer, 
+                  errors.emergencyContact?.relationship && touched.emergencyContact?.relationship && styles.inputError
+                ]}>
+                  <SelectList
+                    setSelected={(val: string) => setFieldValue('emergencyContact.relationship', val)}
+                    data={relationshipOptions}
+                    save="key"
+                    boxStyles={{ 
+                      borderColor: errors.emergencyContact?.relationship && touched.emergencyContact?.relationship ? "#EF4444" : "#D1D5DB",
+                      borderWidth: 0
+                    }}
+                    inputStyles={{ color: "black" }}
+                    dropdownStyles={{ backgroundColor: "white" }}
+                    dropdownTextStyles={{ color: "black" }}
+                    search={false}
+                    arrowicon={<Ionicons name="chevron-down-outline" size={24} color="#D1D5DB" />}
+                    defaultOption={
+                      values.emergencyContact.relationship
+                        ? { 
+                            key: values.emergencyContact.relationship, 
+                            value: relationshipOptions.find(r => r.key === values.emergencyContact.relationship)?.value || values.emergencyContact.relationship
+                          }
+                        : { key: '', value: 'Select Relationship' }
+                    }
+                  />
+                </View>
+                {errors.emergencyContact?.relationship && touched.emergencyContact?.relationship && (
+                  <Text style={styles.errorText}>{errors.emergencyContact.relationship}</Text>
+                )}
+              </View>
+
+              <InputField
+                label="Emergency Contact Phone"
+                value={values.emergencyContact.phone}
+                onChangeText={handleChange('emergencyContact.phone')}
+                onBlur={handleBlur('emergencyContact.phone')}
+                placeholder="Enter emergency contact phone number"
+                keyboardType="phone-pad"
+                error={errors.emergencyContact?.phone}
+                touched={touched.emergencyContact?.phone}
+              />
+            </View>
+
+            {/* Save Button */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.saveButton, 
+                  (isSubmitting || !isValid) && styles.saveButtonDisabled
+                ]}
+                onPress={() => handleSubmit()}
+                disabled={isSubmitting || !isValid}
+              >
+                <LinearGradient
+                  colors={isSubmitting ? ['#9CA3AF', '#9CA3AF'] : ['#2563EB', '#10B981']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.saveButtonGradient}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => router.back()}
+                disabled={isSubmitting}
+              >
+                <Text style={[
+                  styles.cancelButtonText,
+                  isSubmitting && { opacity: 0.5 }
+                ]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        )}
+      </Formik>
     </SafeAreaView>
   );
 }
