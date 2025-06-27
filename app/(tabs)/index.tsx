@@ -1,3 +1,4 @@
+import { useMedicalRecordsContext } from '@/contexts/MedicalRecordsContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
@@ -37,9 +38,14 @@ const HealthcareHomeScreen = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [userName] = useState("Sarah");
   const [showNotification, setShowNotification] = useState(true);
+  const {
+    fetchMedicalRecord,
+    medicalRecord,
+    } = useMedicalRecordsContext();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    fetchMedicalRecord();
     return () => clearInterval(timer);
   }, []);
 
@@ -52,16 +58,16 @@ const HealthcareHomeScreen = () => {
   };
 
   const healthStats = [
-    { icon: Heart, label: "Heart Rate", value: "72", unit: "bpm", trend: "up", color: "#EF4444" },
-    { icon: Activity, label: "Steps Today", value: "8,542", unit: "steps", trend: "up", color: "#2563EB" },
-    { icon: Thermometer, label: "Temperature", value: "98.6", unit: "°F", trend: "stable", color: "#F97316" },
-    { icon: Zap, label: "Energy Level", value: "85", unit: "%", trend: "up", color: "#EAB308" }
+    { icon: Heart, label: "Heart Rate", value: medicalRecord?.vitalSigns.at(-1)?.heartRate, unit: "bpm", trend: "up", color: "#EF4444" },
+    { icon: Activity, label: "Blood Pressure", value: `${medicalRecord?.vitalSigns.at(-1)?.bloodPressure?.systolic}/${medicalRecord?.vitalSigns.at(0)?.bloodPressure?.systolic}` , unit: "mmHg", trend: "up", color: "#2563EB" },
+    { icon: Thermometer, label: "Temperature", value: medicalRecord?.vitalSigns.at(-1)?.temperature, unit: "°F", trend: "stable", color: "#F97316" },
+    { icon: Zap, label: "Weight", value: medicalRecord?.vitalSigns.at(-1)?.weight, unit: "kg", trend: "up", color: "#EAB308" }
   ];
 
   const quickActions = [
     { icon: MessageCircle, label: "AI Chat", colors: ['#3B82F6', '#2563EB'], description: "Get instant health advice", route: "/chat" },
     { icon: Calendar, label: "Book Appointment", colors: ['#10B981', '#059669'], description: "Schedule with doctors", route: "/appointments" },
-    { icon: Pill, label: "Medications", colors: ['#8B5CF6', '#7C3AED'], description: "Track prescriptions", route: "/medications" },
+    { icon: Pill, label: "Medications", colors: ['#8B5CF6', '#7C3AED'], description: "Track prescriptions", route: "/profile/medical-history" },
     { icon: Activity, label: "Symptom Check", colors: ['#EC4899', '#DB2777'], description: "AI-powered assessment", route: "/symptom-check" }
   ];
 
@@ -206,7 +212,7 @@ const HealthcareHomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Health Overview</Text>
-              <TouchableOpacity style={styles.sectionAction}>
+              <TouchableOpacity style={styles.sectionAction} onPress={() => router.push('/profile/medical-history')}>
                 <Text style={styles.sectionActionText}>View Details</Text>
                 <ChevronRight size={16} color="#2563EB" />
               </TouchableOpacity>

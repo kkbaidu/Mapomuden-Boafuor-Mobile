@@ -1,8 +1,3 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -29,7 +24,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <MedicalRecordsProvider>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        {/* <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}> */}
           <AuthGuard>
             <Stack>
               <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -40,7 +35,7 @@ export default function RootLayout() {
             </Stack>
           </AuthGuard>
           <StatusBar style="auto" />
-        </ThemeProvider>
+        {/* </ThemeProvider> */}
       </MedicalRecordsProvider>
     </AuthProvider>
   );

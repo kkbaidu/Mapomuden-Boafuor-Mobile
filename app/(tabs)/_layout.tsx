@@ -50,7 +50,7 @@ export default function TabsLayout() {
 
       {/* Appointments Tab */}
       <Tabs.Screen
-        name="appointments/index"
+        name="appointments"
         options={{
           title: 'Appointments',
           tabBarIcon: ({ color, focused }) => (
@@ -108,7 +108,7 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="prescriptions/index"
+        name="prescriptions"
         options={{
           href: null,
         }}
