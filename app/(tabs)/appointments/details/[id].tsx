@@ -414,7 +414,7 @@ Reason: ${appointment.reason}
                 <TouchableOpacity
                   onPress={() => router.push({
                     pathname: '/prescriptions/details/[id]',
-                    params: { id: appointment.prescription?._id }
+                    params: { id: appointment.prescription?._id as string }
                   })}
                   className="bg-blue-50 px-3 py-1 rounded-lg"
                 >

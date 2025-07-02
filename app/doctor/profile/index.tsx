@@ -170,14 +170,14 @@ export default function ProfileScreen() {
             title="Edit Profile"
             subtitle="Update your personal information"
             icon={{ name: 'person-outline', color: '#2563EB' }}
-            onPress={() => router.push('/profile/edit')}
+            onPress={() => router.push('/doctor/profile/editPersonalProfile')}
           />
           
           <ProfileCard
-            title="Medical History"
-            subtitle="View your complete medical records"
+            title="Edit Professional Information"
+            subtitle="Update your complete professional records"
             icon={{ name: 'medical-outline', color: '#10B981' }}
-            onPress={() => router.push('/profile/medical-history')}
+            onPress={() => router.push('/doctor/profile/editProfessionalProfile')}
           />
         </View>
 
@@ -223,7 +223,7 @@ export default function ProfileScreen() {
             title="App Settings"
             subtitle="Notifications, privacy, and more"
             icon={{ name: 'settings-outline', color: '#8B5CF6' }}
-            onPress={() => router.push('/profile/settings')}
+            onPress={() => router.push('/doctor/profile/settings')}
           />
           
           <ProfileCard
