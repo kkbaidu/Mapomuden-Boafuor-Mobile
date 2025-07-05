@@ -217,7 +217,17 @@ const DoctorProfileForm: React.FC = () => {
           ...cert,
           expiryDate: cert.expiryDate ? new Date(cert.expiryDate) : undefined,
         })),
-        languages: profile.languages.filter(lang => Object.values(lang)[0].trim()),
+        languages: profile.languages.filter((lang: any) => {
+          if(typeof lang === "string") {
+            return lang.trim() !== '';
+          }
+          return lang[""].trim() !== '';
+        }).map((lang: any) => {
+          if(typeof lang === "string") {
+            return lang.trim();
+          }
+          return lang[""].trim();
+      }),
       };
 
       const response = await fetch(`${base_url}/doctors/profile`, {

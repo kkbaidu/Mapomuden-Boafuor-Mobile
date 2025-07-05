@@ -12,39 +12,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-
-interface AppointmentDetails {
-  _id: string;
-  patient: {
-    firstName: string;
-    lastName: string;
-    phone: string;
-    email: string;
-  };
-  doctor: {
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    email?: string;
-    specialization?: string;
-  };
-  appointmentDate: string;
-  duration: number;
-  type: 'in_person' | 'video_call' | 'phone_call';
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  reason: string;
-  notes?: string;
-  videoCallLink?: string;
-  videoCallPlatform?: string;
-  prescription?: {
-    _id: string;
-    medications: Array<{
-      name: string;
-      dosage: string;
-    }>;
-  };
-  createdAt: string;
-}
+import { appointmentAPI } from '../../../../services/appointmentAPI';
+import { useAuthContext } from '../../../../contexts/AuthContext';
+import { Appointment } from '@/hooks/useAppointments';
 
 const statusConfig = {
   pending: {
@@ -99,47 +69,32 @@ const typeConfig = {
 
 export default function AppointmentDetailsScreen() {
   const { id } = useLocalSearchParams();
-  const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuthContext();
 
   useEffect(() => {
-    fetchAppointmentDetails();
+    if (id) {
+      fetchAppointmentDetails();
+    }
   }, [id]);
 
   const fetchAppointmentDetails = async () => {
+    if (!isAuthenticated || !id) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // TODO: Implement API call
-      // const response = await appointmentAPI.getAppointment(id);
-      // setAppointment(response.appointment);
-      
-      // Mock data
-      const mockAppointment: AppointmentDetails = {
-        _id: id as string,
-        patient: {
-          firstName: 'John',
-          lastName: 'Doe',
-          phone: '+233123456789',
-          email: 'john@example.com',
-        },
-        doctor: {
-          firstName: 'Dr. Sarah',
-          lastName: 'Johnson',
-          phone: '+233987654321',
-          email: 'sarah.johnson@clinic.com',
-          specialization: 'General Practitioner',
-        },
-        appointmentDate: '2024-03-15T10:00:00Z',
-        duration: 30,
-        type: 'in_person',
-        status: 'confirmed',
-        reason: 'Regular health checkup and blood pressure monitoring',
-        notes: 'Patient requested early morning appointment. Please ensure blood pressure equipment is ready.',
-        createdAt: '2024-03-10T14:30:00Z',
-      };
-      setAppointment(mockAppointment);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch appointment details');
+      setError(null);
+      const response = await appointmentAPI.getAppointment(id as string);
+      setAppointment(response.appointment);
+    } catch (error: any) {
+      console.error('Fetch appointment details error:', error);
+      setError(error.message);
+      Alert.alert('Error', error.message || 'Failed to fetch appointment details');
     } finally {
       setLoading(false);
     }
@@ -155,14 +110,16 @@ export default function AppointmentDetailsScreen() {
           text: 'Yes, Cancel',
           style: 'destructive',
           onPress: async () => {
+            if (!id) return;
+            
             setUpdating(true);
             try {
-              // TODO: Implement API call
-              // await appointmentAPI.cancelAppointment(id, { reason: 'Cancelled by patient' });
+              await appointmentAPI.cancelAppointment(id as string, 'Cancelled by patient');
               Alert.alert('Success', 'Appointment cancelled successfully');
               router.back();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to cancel appointment');
+            } catch (error: any) {
+              console.error('Cancel appointment error:', error);
+              Alert.alert('Error', error.message || 'Failed to cancel appointment');
             } finally {
               setUpdating(false);
             }
@@ -173,14 +130,14 @@ export default function AppointmentDetailsScreen() {
   };
 
   const handleCallDoctor = () => {
-    if (appointment?.doctor.phone) {
-      Linking.openURL(`tel:${appointment.doctor.phone}`);
+    if (appointment?.doctorPersionalInfo?.phone) {
+      Linking.openURL(`tel:${appointment.doctorPersionalInfo.phone}`);
     }
   };
 
   const handleEmailDoctor = () => {
-    if (appointment?.doctor.email) {
-      Linking.openURL(`mailto:${appointment.doctor.email}`);
+    if (appointment?.doctorPersionalInfo.email) {
+      Linking.openURL(`mailto:${appointment.doctorPersionalInfo.email}`);
     }
   };
 
@@ -190,7 +147,7 @@ export default function AppointmentDetailsScreen() {
     try {
       const shareMessage = `
 Appointment Details:
-Doctor: ${appointment.doctor.firstName} ${appointment.doctor.lastName}
+Doctor: ${appointment.doctorPersionalInfo?.firstName} ${appointment.doctorPersionalInfo?.lastName}
 Date: ${formatDate(appointment.appointmentDate)}
 Time: ${formatTime(appointment.appointmentDate)}
 Type: ${typeConfig[appointment.type].name}
@@ -253,6 +210,40 @@ Reason: ${appointment.reason}
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <View className="flex-1 bg-gray-50 justify-center items-center px-6">
+        <Ionicons name="person-outline" size={64} color="#9CA3AF" />
+        <Text className="text-gray-500 text-lg font-medium mt-4 text-center">
+          Please log in to view appointment details
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/login')}
+          className="bg-blue-600 px-6 py-3 rounded-lg mt-6"
+        >
+          <Text className="text-white font-semibold">Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 bg-gray-50 justify-center items-center px-6">
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text className="text-gray-500 text-lg font-medium mt-4 text-center">
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={fetchAppointmentDetails}
+          className="bg-blue-600 px-6 py-3 rounded-lg mt-6"
+        >
+          <Text className="text-white font-semibold">Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (!appointment) {
     return (
       <View className="flex-1 bg-gray-50 justify-center items-center px-4">
@@ -282,11 +273,11 @@ Reason: ${appointment.reason}
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-1">
               <Text className="text-white text-2xl font-bold">
-                {appointment.doctor.firstName} {appointment.doctor.lastName}
+                {appointment.doctorPersionalInfo?.firstName} {appointment.doctorPersionalInfo?.lastName}
               </Text>
-              {appointment.doctor.specialization && (
+              {appointment.doctorProfessionalInfo.specialization?.name && (
                 <Text className="text-blue-100 mt-1">
-                  {appointment.doctor.specialization}
+                  {appointment.doctorProfessionalInfo.specialization?.name}
                 </Text>
               )}
             </View>
@@ -378,7 +369,7 @@ Reason: ${appointment.reason}
               Contact Doctor
             </Text>
             <View className="flex-row space-x-3">
-              {appointment.doctor.phone && (
+              {appointment.doctorPersionalInfo.phone && (
                 <TouchableOpacity
                   onPress={handleCallDoctor}
                   className="flex-1 bg-green-50 border border-green-200 rounded-lg p-3 items-center"
@@ -387,7 +378,7 @@ Reason: ${appointment.reason}
                   <Text className="text-green-700 font-medium mt-1">Call</Text>
                 </TouchableOpacity>
               )}
-              {appointment.doctor.email && (
+              {appointment.doctorPersionalInfo.email && (
                 <TouchableOpacity
                   onPress={handleEmailDoctor}
                   className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-3 items-center"

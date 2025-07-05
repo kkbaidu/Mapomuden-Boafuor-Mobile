@@ -11,6 +11,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { appointmentAPI, AppointmentFilters } from '../../../services/appointmentAPI';
+import { useAuthContext } from '../../../contexts/AuthContext';
+import { useAppointments } from '../../../hooks/useAppointments';
+
+const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api'; 
 
 // Types
 interface Appointment {
@@ -21,7 +26,7 @@ interface Appointment {
     phone: string;
     email: string;
   };
-  doctor: {
+  doctorPersionalInfo: {
     firstName: string;
     lastName: string;
   };
@@ -49,57 +54,18 @@ const typeIcons = {
 };
 
 export default function AppointmentsScreen() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
+  const [refreshing, setRefreshing] = useState(false);
+  const { isAuthenticated } = useAuthContext();
+  const { appointments, loading, error, refreshAppointments, filterAppointments } = useAppointments();
 
-  const fetchAppointments = async () => {
-    try {
-      // TODO: Implement API call
-      // const response = await appointmentAPI.getUserAppointments();
-      // setAppointments(response.appointments);
-      
-      // Mock data for now
-      const mockAppointments: Appointment[] = [
-        {
-          _id: '1',
-          patient: { firstName: 'John', lastName: 'Doe', phone: '+233123456789', email: 'john@example.com' },
-          doctor: { firstName: 'Dr. Sarah', lastName: 'Johnson' },
-          appointmentDate: '2024-03-15T10:00:00Z',
-          duration: 30,
-          type: 'in_person',
-          status: 'confirmed',
-          reason: 'Regular checkup',
-        },
-        {
-          _id: '2',
-          patient: { firstName: 'Jane', lastName: 'Smith', phone: '+233987654321', email: 'jane@example.com' },
-          doctor: { firstName: 'Dr. Michael', lastName: 'Brown' },
-          appointmentDate: '2024-03-20T14:30:00Z',
-          duration: 45,
-          type: 'video_call',
-          status: 'pending',
-          reason: 'Follow-up consultation',
-        },
-      ];
-      setAppointments(mockAppointments);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch appointments');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchAppointments();
+    await refreshAppointments();
+    setRefreshing(false);
   };
+
+  const filteredAppointments = filterAppointments(filter);
 
   const formatDate = (date: string) => {
     const d = new Date(date);
@@ -119,25 +85,45 @@ export default function AppointmentsScreen() {
     });
   };
 
-  const filteredAppointments = appointments.filter(appointment => {
-    const appointmentDate = new Date(appointment.appointmentDate);
-    const now = new Date();
-    
-    switch (filter) {
-      case 'upcoming':
-        return appointmentDate >= now;
-      case 'past':
-        return appointmentDate < now;
-      default:
-        return true;
-    }
-  });
-
   if (loading) {
     return (
       <View className="flex-1 bg-gray-50 justify-center items-center">
         <ActivityIndicator size="large" color="#2563EB" />
         <Text className="text-gray-600 mt-2">Loading appointments...</Text>
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <View className="flex-1 bg-gray-50 justify-center items-center px-6">
+        <Ionicons name="person-outline" size={64} color="#9CA3AF" />
+        <Text className="text-gray-500 text-lg font-medium mt-4 text-center">
+          Please log in to view appointments
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/login')}
+          className="bg-blue-600 px-6 py-3 rounded-lg mt-6"
+        >
+          <Text className="text-white font-semibold">Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 bg-gray-50 justify-center items-center px-6">
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text className="text-gray-500 text-lg font-medium mt-4 text-center">
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={refreshAppointments}
+          className="bg-blue-600 px-6 py-3 rounded-lg mt-6"
+        >
+          <Text className="text-white font-semibold">Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -205,7 +191,7 @@ export default function AppointmentsScreen() {
                 <View className="flex-row justify-between items-start mb-3">
                   <View className="flex-1">
                     <Text className="text-lg font-semibold text-gray-900">
-                      {appointment.doctor.firstName} {appointment.doctor.lastName}
+                      {appointment.doctorPersionalInfo?.firstName} {appointment.doctorPersionalInfo?.lastName}
                     </Text>
                     <Text className="text-gray-600 mt-1">
                       {appointment.reason}

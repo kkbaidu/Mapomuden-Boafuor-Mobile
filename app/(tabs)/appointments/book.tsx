@@ -13,14 +13,33 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { doctorAPI } from '../../../services/doctorAPI';
+import { appointmentAPI, CreateAppointmentData } from '../../../services/appointmentAPI';
+import { useAuthContext } from '../../../contexts/AuthContext';
 
 interface Doctor {
   _id: string;
-  firstName: string;
-  lastName: string;
-  specialization: string;
-  rating: number;
-  avatar?: string;
+  user: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  specializations: Array<{
+    name: string;
+    yearsOfExperience: number;
+  }>;
+  rating: {
+    average: number;
+    totalReviews: number;
+  };
+  consultationFees: {
+    inPerson: number;
+    videoCall: number;
+    phoneCall: number;
+    currency: string;
+  };
+  hospital?: string;
+  clinic?: string;
 }
 
 const appointmentTypes = [
@@ -31,6 +50,14 @@ const appointmentTypes = [
     description: 'Visit the clinic',
     color: 'bg-blue-50 border-blue-200',
     iconColor: '#2563EB',
+  },
+  {
+    id: 'video_call',
+    name: 'Video Call',
+    icon: 'videocam-outline',
+    description: 'Online consultation',
+    color: 'bg-purple-50 border-purple-200',
+    iconColor: '#7C3AED',
   },
   {
     id: 'phone_call',
@@ -50,7 +77,9 @@ const timeSlots = [
 export default function BookAppointmentScreen() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [fetchingDoctors, setFetchingDoctors] = useState(true);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const { isAuthenticated } = useAuthContext();
   
   // Form data
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -66,37 +95,14 @@ export default function BookAppointmentScreen() {
 
   const fetchDoctors = async () => {
     try {
-      // TODO: Implement API call
-      // const response = await doctorAPI.getAvailableDoctors();
-      // setDoctors(response.doctors);
-      
-      // Mock data
-      const mockDoctors: Doctor[] = [
-        {
-          _id: '1',
-          firstName: 'Dr. Sarah',
-          lastName: 'Johnson',
-          specialization: 'General Practitioner',
-          rating: 4.8,
-        },
-        {
-          _id: '2',
-          firstName: 'Dr. Michael',
-          lastName: 'Brown',
-          specialization: 'Cardiologist',
-          rating: 4.9,
-        },
-        {
-          _id: '3',
-          firstName: 'Dr. Emily',
-          lastName: 'Davis',
-          specialization: 'Pediatrician',
-          rating: 4.7,
-        },
-      ];
-      setDoctors(mockDoctors);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to fetch doctors');
+      setFetchingDoctors(true);
+      const response = await doctorAPI.getAllDoctors();
+      setDoctors(response || []);
+    } catch (error: any) {
+      console.error('Fetch doctors error:', error);
+      Alert.alert('Error', error.message || 'Failed to fetch doctors');
+    } finally {
+      setFetchingDoctors(false);
     }
   };
 
@@ -106,22 +112,31 @@ export default function BookAppointmentScreen() {
       return;
     }
 
+    if (!isAuthenticated) {
+      Alert.alert('Error', 'Please log in to book an appointment');
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Implement API call
-      const appointmentData = {
+      const appointmentDateTime = new Date(selectedDate);
+      const [hours, minutes] = selectedTime.split(':');
+      appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+      const appointmentData: CreateAppointmentData = {
         doctorId: selectedDoctor._id,
-        appointmentDate: new Date(selectedDate.toDateString() + ' ' + selectedTime),
-        type: selectedType,
+        doctorUserId: selectedDoctor.user._id,
+        appointmentDate: appointmentDateTime,
+        type: selectedType as 'in_person' | 'video_call' | 'phone_call',
         reason: reason.trim(),
         duration: 30,
       };
 
-      // const response = await appointmentAPI.createAppointment(appointmentData);
+      const response = await appointmentAPI.createAppointment(appointmentData);
       
       Alert.alert(
         'Success',
-        'Appointment booked successfully! You will receive a confirmation shortly.',
+        response.message || 'Appointment booked successfully! You will receive a confirmation shortly.',
         [
           {
             text: 'OK',
@@ -129,8 +144,9 @@ export default function BookAppointmentScreen() {
           },
         ]
       );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to book appointment. Please try again.');
+    } catch (error: any) {
+      console.error('Book appointment error:', error);
+      Alert.alert('Error', error.message || 'Failed to book appointment. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -177,42 +193,64 @@ export default function BookAppointmentScreen() {
       </Text>
 
       <View className="space-y-3">
-        {doctors.map((doctor) => (
-          <TouchableOpacity
-            key={doctor._id}
-            onPress={() => setSelectedDoctor(doctor)}
-            className={`p-4 rounded-xl border-2 ${
-              selectedDoctor?._id === doctor._id
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-          >
-            <View className="flex-row items-center space-x-3">
-              <View className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-full items-center justify-center">
-                <Text className="text-white font-bold text-lg">
-                  {doctor.firstName.charAt(0)}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-gray-900 text-lg">
-                  {doctor.firstName} {doctor.lastName}
-                </Text>
-                <Text className="text-gray-600">
-                  {doctor.specialization}
-                </Text>
-                <View className="flex-row items-center mt-1">
-                  <Ionicons name="star" size={16} color="#F59E0B" />
-                  <Text className="text-gray-600 ml-1">
-                    {doctor.rating} rating
+        {fetchingDoctors ? (
+          <View className="flex-1 justify-center items-center py-8">
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text className="text-gray-600 mt-2">Loading doctors...</Text>
+          </View>
+        ) : doctors.length === 0 ? (
+          <View className="flex-1 justify-center items-center py-8">
+            <Ionicons name="medical-outline" size={64} color="#9CA3AF" />
+            <Text className="text-gray-500 text-lg font-medium mt-4">
+              No doctors available
+            </Text>
+            <Text className="text-gray-400 text-center mt-2">
+              Please try again later
+            </Text>
+          </View>
+        ) : (
+          doctors.map((doctor) => (
+            <TouchableOpacity
+              key={doctor._id}
+              onPress={() => setSelectedDoctor(doctor)}
+              className={`p-4 rounded-xl border-2 ${
+                selectedDoctor?._id === doctor._id
+                  ? 'border-blue-600 bg-blue-50'
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <View className="flex-row items-center space-x-3">
+                <View className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-full items-center justify-center">
+                  <Text className="text-white font-bold text-lg">
+                    {doctor.user.firstName.charAt(0)}
                   </Text>
                 </View>
+                <View className="flex-1">
+                  <Text className="font-semibold text-gray-900 text-lg">
+                    {doctor.user.firstName} {doctor.user.lastName}
+                  </Text>
+                  <Text className="text-gray-600">
+                    {doctor.specializations[0]?.name || 'General Practitioner'}
+                  </Text>
+                  <View className="flex-row items-center mt-1">
+                    <Ionicons name="star" size={16} color="#F59E0B" />
+                    <Text className="text-gray-600 ml-1">
+                      {doctor.rating.average.toFixed(1)} ({doctor.rating.totalReviews} reviews)
+                    </Text>
+                  </View>
+                  {doctor.hospital && (
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {doctor.hospital}
+                    </Text>
+                  )}
+                </View>
+                {selectedDoctor?._id === doctor._id && (
+                  <Ionicons name="checkmark-circle" size={24} color="#2563EB" />
+                )}
               </View>
-              {selectedDoctor?._id === doctor._id && (
-                <Ionicons name="checkmark-circle" size={24} color="#2563EB" />
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </View>
     </ScrollView>
   );
@@ -354,7 +392,7 @@ export default function BookAppointmentScreen() {
           <View className="flex-row justify-between">
             <Text className="text-gray-600">Doctor:</Text>
             <Text className="font-medium text-gray-900">
-              {selectedDoctor?.firstName} {selectedDoctor?.lastName}
+              {selectedDoctor?.user.firstName} {selectedDoctor?.user.lastName}
             </Text>
           </View>
           <View className="flex-row justify-between">
@@ -422,7 +460,7 @@ export default function BookAppointmentScreen() {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white font-semibold">
+              <Text className="text-gray-700 font-semibold">
                 {step === 3 ? 'Book Appointment' : 'Next'}
               </Text>
             )}
