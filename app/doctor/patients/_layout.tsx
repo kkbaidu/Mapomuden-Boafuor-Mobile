@@ -8,6 +8,7 @@ export default function PatientsLayout() {
         name="index" 
         options={{ 
           title: 'My Patients',
+          headerShown: false,
           headerStyle: {
             backgroundColor: '#007AFF',
           },
@@ -21,6 +22,7 @@ export default function PatientsLayout() {
         name="[id]" 
         options={{ 
           title: 'Patient Details',
+          headerShown: false,
           headerStyle: {
             backgroundColor: '#007AFF',
           },

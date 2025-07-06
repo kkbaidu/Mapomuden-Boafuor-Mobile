@@ -1,33 +1,32 @@
-// app/doctor/patients/_layout.tsx
+// app/doctor/prescriptions/_layout.tsx
 import { Stack } from 'expo-router';
 
-export default function PatientsLayout() {
+export default function PrescriptionsLayout() {
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 18,
+        },
+        headerShadowVisible: false,
+        headerTintColor: '#fff',
+        headerStyle: {
+          backgroundColor: '#2563EB',
+        },
+      }}
+    >
       <Stack.Screen 
         name="index" 
         options={{ 
           title: 'Prescriptions',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false, // Custom header in component
         }} 
       />
       <Stack.Screen 
-        name="create/[patientId]" 
+        name="create" 
         options={{ 
-          title: 'Patient Details',
-          headerStyle: {
-            backgroundColor: '#007AFF',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false, // Let nested screens handle headers
         }} 
       />
     </Stack>

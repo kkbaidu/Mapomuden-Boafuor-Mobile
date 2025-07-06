@@ -18,16 +18,16 @@ export interface Appointment {
   };
   doctorProfessionalInfo: {
     _id: string;
-    specialization:  {
-    name: string;
-    certification?: string;
-    yearsOfExperience: number;
-  }   
+    specializations: Array<{
+      name: string;
+      certification?: string;
+      yearsOfExperience: number;
+    }>;
     experience: number; 
     rating: {
-    average: number;
-    totalReviews: number;
-  }; 
+      average: number;
+      totalReviews: number;
+    }; 
   };
   appointmentDate: string;
   duration: number;
@@ -71,7 +71,7 @@ export const useDoctorAppointments = () => {
       };
 
       const response = await doctorAppointmentAPI.getDoctorAppointments(defaultFilters);
-      console.log('Get doctor appointments response:', response);
+      
       setAppointments(response.appointments || []);
       return { success: true, data: response };
     } catch (error: any) {
@@ -175,6 +175,21 @@ export const useDoctorAppointments = () => {
     }
   }, [isAuthenticated, user?.role]);
 
+  const debugAppointments = async () => {
+    if (!isAuthenticated || user?.role !== 'doctor') {
+      return { success: false, error: 'Not authenticated as doctor' };
+    }
+
+    try {
+      const debugData = await doctorAppointmentAPI.debugAppointments();
+      console.log('Debug data:', debugData);
+      return { success: true, data: debugData };
+    } catch (error: any) {
+      console.error('Debug appointments error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return {
     appointments,
     stats,
@@ -187,5 +202,6 @@ export const useDoctorAppointments = () => {
     filterAppointmentsByStatus,
     getTodayAppointments,
     getUpcomingAppointments,
+    debugAppointments,
   };
 };

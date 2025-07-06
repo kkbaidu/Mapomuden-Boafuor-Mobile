@@ -42,6 +42,7 @@ export default function DoctorAppointments() {
         filterAppointmentsByStatus,
         getTodayAppointments,
         getUpcomingAppointments,
+        debugAppointments,
     } = useDoctorAppointments();
 
     const onRefresh = async () => {
@@ -50,7 +51,18 @@ export default function DoctorAppointments() {
         setRefreshing(false);
     };
 
-    console.log('Doctor Appointments:', appointments);
+    const handleDebug = async () => {
+        try {
+            const result = await debugAppointments();
+            if (result.success) {
+                Alert.alert('Debug Data', JSON.stringify(result.data, null, 2));
+            } else {
+                Alert.alert('Debug Error', result.error || 'Failed to fetch debug data');
+            }
+        } catch (error: any) {
+            Alert.alert('Debug Error', error.message || 'Unknown error');
+        }
+    };
 
     const getFilteredAppointments = () => {
         switch (filter) {
@@ -150,12 +162,20 @@ export default function DoctorAppointments() {
                             Welcome back, Dr. {user?.firstName}
                         </Text>
                     </View>
-                    <TouchableOpacity
-                        onPress={onRefresh}
-                        className="bg-blue-50 p-3 rounded-full"
-                    >
-                        <Ionicons name="refresh" size={20} color="#2563EB" />
-                    </TouchableOpacity>
+                    <View className="flex-row space-x-2">
+                        <TouchableOpacity
+                            onPress={handleDebug}
+                            className="bg-red-50 p-3 rounded-full"
+                        >
+                            <Ionicons name="bug-outline" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={onRefresh}
+                            className="bg-blue-50 p-3 rounded-full"
+                        >
+                            <Ionicons name="refresh" size={20} color="#2563EB" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 

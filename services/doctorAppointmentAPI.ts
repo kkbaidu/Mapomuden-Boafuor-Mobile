@@ -51,7 +51,7 @@ class DoctorAppointmentAPI {
         `${base_url}/appointments?${params.toString()}`,
         { headers }
       );
-      console.log('Get doctor appointments response:', response.data);
+      
       return response.data;
     } catch (error: any) {
       console.error('Get doctor appointments error:', error);
@@ -109,6 +109,21 @@ class DoctorAppointmentAPI {
     } catch (error: any) {
       console.error('Get appointment stats error:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch appointment statistics');
+    }
+  }
+
+  async debugAppointments() {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await axios.get(
+        `${base_url}/appointments/debug`,
+        { headers }
+      );
+      console.log('Debug appointments response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Debug appointments error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch debug data');
     }
   }
 }
