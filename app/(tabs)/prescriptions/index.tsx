@@ -1,58 +1,540 @@
-import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+} from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthContext } from '../../../contexts/AuthContext';
+import { prescriptionAPI, Prescription } from '../../../services/prescriptionAPI';
 
-type Prescription = {
-    id: string;
-    name: string;
-    dosage: string;
-    frequency: string;
+type FilterType = 'all' | 'active' | 'completed' | 'expired';
+
+const PrescriptionsScreen = () => {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuthContext();
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [filteredPrescriptions, setFilteredPrescriptions] = useState<Prescription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchPrescriptions = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      let response;
+      
+      // Use different API calls based on user role
+      if (user.role === 'doctor') {
+        response = await prescriptionAPI.getDoctorPrescriptions();
+      } else {
+        // For patients, use the general endpoint which will filter by patient automatically
+        response = await prescriptionAPI.getDoctorPrescriptions({ patientId: user._id });
+      }
+      
+      if (response && response.prescriptions) {
+        setPrescriptions(response.prescriptions);
+        setFilteredPrescriptions(response.prescriptions);
+      }
+    } catch (error: any) {
+      console.error('Fetch prescriptions error:', error);
+      Alert.alert('Error', error.message || 'Failed to fetch prescriptions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchPrescriptions();
+    setRefreshing(false);
+  };
+
+  const filterPrescriptions = (filter: FilterType, search: string = searchQuery) => {
+    let filtered = prescriptions;
+
+    // Filter by status
+    if (filter !== 'all') {
+      filtered = filtered.filter(prescription => prescription.status === filter);
+    }
+
+    // Filter by search query
+    if (search.trim()) {
+      filtered = filtered.filter(prescription =>
+        prescription.diagnosis.toLowerCase().includes(search.toLowerCase()) ||
+        prescription.doctor.firstName.toLowerCase().includes(search.toLowerCase()) ||
+        prescription.doctor.lastName.toLowerCase().includes(search.toLowerCase()) ||
+        prescription.medications.some(med => 
+          med.name.toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    }
+
+    setFilteredPrescriptions(filtered);
+  };
+
+  const handleFilterChange = (filter: FilterType) => {
+    setActiveFilter(filter);
+    filterPrescriptions(filter);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    filterPrescriptions(activeFilter, query);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return '#10B981';
+      case 'completed': return '#6B7280';
+      case 'expired': return '#EF4444';
+      case 'cancelled': return '#F59E0B';
+      default: return '#6B7280';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active': return 'checkmark-circle';
+      case 'completed': return 'checkmark-done-circle';
+      case 'expired': return 'time';
+      case 'cancelled': return 'close-circle';
+      default: return 'help-circle';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const renderPrescriptionCard = ({ item }: { item: Prescription }) => (
+    <TouchableOpacity
+      style={styles.prescriptionCard}
+      onPress={() => router.push(`/prescriptions/details/${item._id}`)}
+    >
+      <LinearGradient
+        colors={['#ffffff', '#f8fafc']}
+        style={styles.cardGradient}
+      >
+        {/* Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.statusContainer}>
+            <Ionicons
+              name={getStatusIcon(item.status)}
+              size={16}
+              color={getStatusColor(item.status)}
+            />
+            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            </Text>
+          </View>
+          <Text style={styles.dateText}>
+            {formatDate(item.prescriptionDate)}
+          </Text>
+        </View>
+
+        {/* Doctor Info */}
+        <View style={styles.doctorInfo}>
+          <MaterialIcons name="local-hospital" size={20} color="#6B7280" />
+          <Text style={styles.doctorName}>
+            Dr. {item.doctor.firstName} {item.doctor.lastName}
+          </Text>
+        </View>
+
+        {/* Diagnosis */}
+        <View style={styles.diagnosisContainer}>
+          <Text style={styles.diagnosisLabel}>Diagnosis:</Text>
+          <Text style={styles.diagnosisText}>{item.diagnosis}</Text>
+        </View>
+
+        {/* Medications Count */}
+        <View style={styles.medicationsCount}>
+          <Ionicons name="medical" size={16} color="#10B981" />
+          <Text style={styles.medicationsText}>
+            {item.medications.length} medication{item.medications.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {/* Expiry Date */}
+        <View style={styles.expiryContainer}>
+          <Ionicons 
+            name="calendar-outline" 
+            size={14} 
+            color={new Date(item.expiryDate) < new Date() ? '#EF4444' : '#6B7280'} 
+          />
+          <Text style={[
+            styles.expiryText,
+            { color: new Date(item.expiryDate) < new Date() ? '#EF4444' : '#6B7280' }
+          ]}>
+            Expires: {formatDate(item.expiryDate)}
+          </Text>
+        </View>
+
+        {/* Arrow */}
+        <View style={styles.arrowContainer}>
+          <Ionicons name="chevron-forward" size={20} color="#C4C4C4" />
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
+  const renderFilterButton = (filter: FilterType, label: string, count: number) => (
+    <TouchableOpacity
+      style={[
+        styles.filterButton,
+        activeFilter === filter && styles.filterButtonActive
+      ]}
+      onPress={() => handleFilterChange(filter)}
+    >
+      <Text style={[
+        styles.filterButtonText,
+        activeFilter === filter && styles.filterButtonTextActive
+      ]}>
+        {label}
+      </Text>
+      <View style={[
+        styles.countBadge,
+        activeFilter === filter && styles.countBadgeActive
+      ]}>
+        <Text style={[
+          styles.countBadgeText,
+          activeFilter === filter && styles.countBadgeTextActive
+        ]}>
+          {count}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const getFilterCounts = () => {
+    return {
+      all: prescriptions.length,
+      active: prescriptions.filter(p => p.status === 'active').length,
+      completed: prescriptions.filter(p => p.status === 'completed').length,
+      expired: prescriptions.filter(p => p.status === 'expired').length,
+    };
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchPrescriptions();
+    }
+  }, [isAuthenticated, user]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#10B981" />
+        <Text style={styles.loadingText}>Loading prescriptions...</Text>
+      </View>
+    );
+  }
+
+  const filterCounts = getFilterCounts();
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <LinearGradient colors={['#10B981', '#059669']} style={styles.header}>
+        <Text style={styles.headerTitle}>My Prescriptions</Text>
+        <Text style={styles.headerSubtitle}>
+          {prescriptions.length} total prescription{prescriptions.length !== 1 ? 's' : ''}
+        </Text>
+      </LinearGradient>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search prescriptions, medications, or doctors..."
+          value={searchQuery}
+          onChangeText={handleSearch}
+          placeholderTextColor="#9CA3AF"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => handleSearch('')}
+            style={styles.clearButton}
+          >
+            <Ionicons name="close-circle" size={20} color="#6B7280" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Filter Buttons */}
+      <View style={styles.filtersContainer}>
+        {renderFilterButton('all', 'All', filterCounts.all)}
+        {renderFilterButton('active', 'Active', filterCounts.active)}
+        {renderFilterButton('completed', 'Completed', filterCounts.completed)}
+        {renderFilterButton('expired', 'Expired', filterCounts.expired)}
+      </View>
+
+      {/* Prescriptions List */}
+      <FlatList
+        data={filteredPrescriptions}
+        renderItem={renderPrescriptionCard}
+        keyExtractor={(item) => item._id}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#10B981']}
+            tintColor="#10B981"
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="medication" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'No matching prescriptions' : 'No prescriptions found'}
+            </Text>
+            <Text style={styles.emptyMessage}>
+              {searchQuery 
+                ? 'Try adjusting your search terms'
+                : 'Your prescriptions will appear here when available'
+              }
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
 };
 
-const prescriptions: Prescription[] = [
-    { id: '1', name: 'Amoxicillin', dosage: '500mg', frequency: '3 times a day' },
-    { id: '2', name: 'Ibuprofen', dosage: '200mg', frequency: '2 times a day' },
-    // Add more prescriptions as needed
-];
-
-const PrescriptionItem = ({ item }: { item: Prescription }) => (
-    <View style={styles.itemContainer}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.details}>{item.dosage} • {item.frequency}</Text>
-    </View>
-);
-
-export default function PrescriptionsScreen() {
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>My Prescriptions</Text>
-            <FlatList
-                data={prescriptions}
-                keyExtractor={item => item.id}
-                renderItem={PrescriptionItem}
-                contentContainerStyle={styles.list}
-                ListEmptyComponent={<Text style={styles.empty}>No prescriptions found.</Text>}
-            />
-            <TouchableOpacity style={styles.addButton}>
-                <Text style={styles.addButtonText}>+ Add Prescription</Text>
-            </TouchableOpacity>
-        </View>
-    );
-}
-
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-    list: { flexGrow: 1 },
-    itemContainer: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    name: { fontSize: 18, fontWeight: '600' },
-    details: { fontSize: 14, color: '#555', marginTop: 4 },
-    empty: { textAlign: 'center', color: '#888', marginTop: 32 },
-    addButton: {
-        backgroundColor: '#007AFF',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 16,
-    },
-    addButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    marginTop: -12,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#374151',
+  },
+  clearButton: {
+    padding: 4,
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  filterButtonTextActive: {
+    color: '#ffffff',
+  },
+  countBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  countBadgeTextActive: {
+    color: '#ffffff',
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  prescriptionCard: {
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  cardGradient: {
+    padding: 20,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  doctorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  doctorName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  diagnosisContainer: {
+    marginBottom: 12,
+  },
+  diagnosisLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  diagnosisText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  medicationsCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  medicationsText: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '500',
+  },
+  expiryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  expiryText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  arrowContainer: {
+    position: 'absolute',
+    right: 20,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
 });
+
+export default PrescriptionsScreen;

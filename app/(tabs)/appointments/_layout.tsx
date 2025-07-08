@@ -22,6 +22,7 @@ export default function AppointmentsLayout() {
           name="index"
           options={{
             title: 'Appointments',
+            headerShown: false,
             headerStyle: {
               backgroundColor: '#2563EB',
             },

@@ -36,6 +36,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShadowVisible: false,
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
               <Ionicons 
@@ -53,6 +54,7 @@ export default function TabsLayout() {
         name="appointments"
         options={{
           title: 'Appointments',
+          headerShadowVisible: false,
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
               <FontAwesome5 
@@ -62,6 +64,21 @@ export default function TabsLayout() {
               />
             </View>
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="prescriptions"
+        options={{
+          title: 'Prescriptions',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+              <Ionicons 
+                name={focused ? 'medkit' : 'medkit-outline'} 
+                size={24} 
+                color={focused ? '#ffffff' : color} 
+              />
+            </View>
+            ),
         }}
       />
 
@@ -102,13 +119,6 @@ export default function TabsLayout() {
       {/* Hidden Tabs - These won't appear in the tab bar */}
       <Tabs.Screen
         name="symptoms/index"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="prescriptions"
         options={{
           href: null,
         }}

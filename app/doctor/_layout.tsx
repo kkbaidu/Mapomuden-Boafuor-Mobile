@@ -2,7 +2,7 @@
 import { Tabs, Redirect } from 'expo-router';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import {
   Platform,
   StyleSheet,
@@ -48,8 +48,14 @@ export default function DoctorLayout() {
         name="dashboard"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+              <Ionicons 
+                name={focused ? 'home' : 'home-outline'} 
+                size={24} 
+                color={focused ? '#ffffff' : color} 
+              />
+            </View>
           ),
         }}
       />
@@ -57,8 +63,14 @@ export default function DoctorLayout() {
         name="appointments"
         options={{
           title: 'Appointments',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+              <FontAwesome5
+                name="calendar-alt"
+                size={24} 
+                color={focused ? '#ffffff' : color} 
+              />
+            </View>
           ),
         }}
       />
@@ -66,8 +78,14 @@ export default function DoctorLayout() {
         name="patients"
         options={{
           title: 'Patients',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+              <Ionicons 
+              name={focused ? 'people' : 'people-outline'} 
+              size={24} 
+              color={focused ? '#ffffff' : color} 
+              />
+            </View>
           ),
         }}
       />
@@ -75,9 +93,14 @@ export default function DoctorLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+              <Ionicons 
+                name={focused ? 'person' : 'person-outline'} 
+                size={24} 
+                color={focused ? '#ffffff' : color} 
+              />
+            </View>),
         }}
       />
 

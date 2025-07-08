@@ -104,7 +104,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    // <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -243,7 +243,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    // </SafeAreaView>
   );
 }
 
@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   scrollContent: {
+    flex: 1,
     paddingBottom: 32,
   },
   loadingContainer: {

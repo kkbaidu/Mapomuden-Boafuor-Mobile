@@ -22,6 +22,7 @@ export default function AppointmentsLayout() {
           name="index"
           options={{
             title: 'Prescription',
+            headerShown: false,
             headerStyle: {
               backgroundColor: '#2563EB',
             },
@@ -31,6 +32,7 @@ export default function AppointmentsLayout() {
           name="details/[id]"
           options={{
             title: 'Prescription Details',
+            headerShown: false,
             headerStyle: {
               backgroundColor: '#2563EB',
             },
