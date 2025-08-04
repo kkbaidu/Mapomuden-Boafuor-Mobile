@@ -1,3 +1,4 @@
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useMedicalRecordsContext } from '@/contexts/MedicalRecordsContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -38,6 +39,7 @@ const HealthcareHomeScreen = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [userName] = useState("Sarah");
   const [showNotification, setShowNotification] = useState(true);
+  const { user } = useAuthContext();
   const {
     fetchMedicalRecord,
     medicalRecord,
@@ -177,7 +179,7 @@ const HealthcareHomeScreen = () => {
               <Heart size={24} color="white" />
             </LinearGradient>
             <View style={styles.headerText}>
-              <Text style={styles.greeting}>Good morning, {userName}!</Text>
+              <Text style={styles.greeting}>Good morning, {user?.firstName} !</Text>
               <Text style={styles.timeText}>{formatTime(currentTime)} • How are you feeling today?</Text>
             </View>
           </View>

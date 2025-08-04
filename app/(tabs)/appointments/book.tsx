@@ -318,16 +318,20 @@ export default function BookAppointmentScreen() {
       </TouchableOpacity>
 
       {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          minimumDate={new Date()}
-          onChange={(event, date) => {
-            setShowDatePicker(Platform.OS === 'ios');
-            if (date) setSelectedDate(date);
-          }}
-        />
+        <View style={{ backgroundColor: 'white', borderRadius: 8 }}>
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={new Date()}
+            onChange={(event, date) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (date) setSelectedDate(date);
+            }}
+            textColor="black" // Add this prop
+            style={{ backgroundColor: 'white' }} // Add background
+          />
+        </View>
       )}
 
       {/* Time Selection */}

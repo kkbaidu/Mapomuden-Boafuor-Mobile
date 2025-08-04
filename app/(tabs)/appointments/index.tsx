@@ -129,9 +129,9 @@ export default function AppointmentsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50 mt-10">
       {/* Header with filters */}
-      <View className="bg-white border-b border-gray-200 px-4 py-3">
+      <View className="bg-white border-b border-gray-200 px-4 py-3 flex flex-row justify-between">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row space-x-3">
             {(['all', 'upcoming', 'past'] as const).map((filterOption) => (
@@ -155,6 +155,12 @@ export default function AppointmentsScreen() {
             ))}
           </View>
         </ScrollView>
+        <TouchableOpacity
+              onPress={() => router.push('/appointments/book')}
+              className="bg-blue-600 px-3 flex justify-center rounded-lg"
+            >
+              <Text className="text-white font-semibold">Book Appointment</Text>
+            </TouchableOpacity>
       </View>
 
       <ScrollView

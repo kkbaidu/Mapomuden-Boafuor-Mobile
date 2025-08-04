@@ -272,11 +272,11 @@ Reason: ${appointment.reason}
         <View className="bg-gradient-to-br from-blue-600 to-green-500 px-4 pt-6 pb-8">
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-1">
-              <Text className="text-white text-2xl font-bold">
+              <Text className="text-gray-700 text-2xl font-bold">
                 {appointment.doctorPersionalInfo?.firstName} {appointment.doctorPersionalInfo?.lastName}
               </Text>
               {appointment.doctorProfessionalInfo.specialization?.name && (
-                <Text className="text-blue-100 mt-1">
+                <Text className="text-blue-300 mt-1">
                   {appointment.doctorProfessionalInfo.specialization?.name}
                 </Text>
               )}
@@ -290,7 +290,7 @@ Reason: ${appointment.reason}
                   {appointment.status.replace('_', ' ')}
                 </Text>
               </View>
-              <Text className="text-blue-100 text-sm mt-1">
+              <Text className="text-blue-300 text-sm mt-1">
                 {getTimeUntilAppointment()}
               </Text>
             </View>
@@ -430,7 +430,7 @@ Reason: ${appointment.reason}
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View className="bg-white border-t border-gray-200 px-4 py-3">
+      <View className="bg-white border-t border-gray-200 px-4 py-3 mb-20">
         <View className="flex-row space-x-3">
           <TouchableOpacity
             onPress={handleShareAppointment}
