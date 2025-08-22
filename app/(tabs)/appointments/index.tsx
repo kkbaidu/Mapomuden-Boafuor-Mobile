@@ -156,11 +156,11 @@ export default function AppointmentsScreen() {
           </View>
         </ScrollView>
         <TouchableOpacity
-              onPress={() => router.push('/appointments/book')}
-              className="bg-blue-600 px-3 flex justify-center rounded-lg"
-            >
+            onPress={() => router.push('/appointments/book')}
+            className="bg-blue-600 px-3 flex justify-center rounded-lg"
+          >
               <Text className="text-white font-semibold">Book Appointment</Text>
-            </TouchableOpacity>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
