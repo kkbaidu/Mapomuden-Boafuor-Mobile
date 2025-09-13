@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,24 +9,29 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-} from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthContext } from '../../../contexts/AuthContext';
-import { prescriptionAPI, Prescription } from '../../../services/prescriptionAPI';
+} from "react-native";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { useAuthContext } from "../../../contexts/AuthContext";
+import {
+  prescriptionAPI,
+  Prescription,
+} from "../../../services/prescriptionAPI";
 
-type FilterType = 'all' | 'active' | 'completed' | 'expired';
+type FilterType = "all" | "active" | "completed";
 
 const PrescriptionsScreen = () => {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthContext();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [filteredPrescriptions, setFilteredPrescriptions] = useState<Prescription[]>([]);
+  const [filteredPrescriptions, setFilteredPrescriptions] = useState<
+    Prescription[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchPrescriptions = async () => {
     if (!user) return;
@@ -34,22 +39,24 @@ const PrescriptionsScreen = () => {
     try {
       setLoading(true);
       let response;
-      
+
       // Use different API calls based on user role
-      if (user.role === 'doctor') {
+      if (user.role === "doctor") {
         response = await prescriptionAPI.getDoctorPrescriptions();
       } else {
         // For patients, use the general endpoint which will filter by patient automatically
-        response = await prescriptionAPI.getDoctorPrescriptions({ patientId: user._id });
+        response = await prescriptionAPI.getDoctorPrescriptions({
+          patientId: user._id,
+        });
       }
-      
+
       if (response && response.prescriptions) {
         setPrescriptions(response.prescriptions);
         setFilteredPrescriptions(response.prescriptions);
       }
     } catch (error: any) {
-      console.error('Fetch prescriptions error:', error);
-      Alert.alert('Error', error.message || 'Failed to fetch prescriptions');
+      console.error("Fetch prescriptions error:", error);
+      Alert.alert("Error", error.message || "Failed to fetch prescriptions");
     } finally {
       setLoading(false);
     }
@@ -61,23 +68,46 @@ const PrescriptionsScreen = () => {
     setRefreshing(false);
   };
 
-  const filterPrescriptions = (filter: FilterType, search: string = searchQuery) => {
+  const filterPrescriptions = (
+    filter: FilterType,
+    search: string = searchQuery
+  ) => {
     let filtered = prescriptions;
 
-    // Filter by status
-    if (filter !== 'all') {
-      filtered = filtered.filter(prescription => prescription.status === filter);
+    // Filter by status with expiry date logic
+    if (filter !== "all") {
+      filtered = filtered.filter((prescription) => {
+        const isExpired = new Date(prescription.expiryDate) < new Date();
+
+        if (filter === "active") {
+          // Active: status is active AND not expired
+          return prescription.status === "active" && !isExpired;
+        } else if (filter === "completed") {
+          // Completed: status is completed OR expired
+          return (
+            prescription.status === "completed" ||
+            prescription.status === "expired" ||
+            isExpired
+          );
+        }
+        return false;
+      });
     }
 
     // Filter by search query
     if (search.trim()) {
-      filtered = filtered.filter(prescription =>
-        prescription.diagnosis.toLowerCase().includes(search.toLowerCase()) ||
-        prescription.doctor.firstName.toLowerCase().includes(search.toLowerCase()) ||
-        prescription.doctor.lastName.toLowerCase().includes(search.toLowerCase()) ||
-        prescription.medications.some(med => 
-          med.name.toLowerCase().includes(search.toLowerCase())
-        )
+      filtered = filtered.filter(
+        (prescription) =>
+          prescription.diagnosis.toLowerCase().includes(search.toLowerCase()) ||
+          prescription.doctor.firstName
+            .toLowerCase()
+            .includes(search.toLowerCase()) ||
+          prescription.doctor.lastName
+            .toLowerCase()
+            .includes(search.toLowerCase()) ||
+          prescription.medications.some((med) =>
+            med.name.toLowerCase().includes(search.toLowerCase())
+          )
       );
     }
 
@@ -94,31 +124,72 @@ const PrescriptionsScreen = () => {
     filterPrescriptions(activeFilter, query);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, expiryDate: string) => {
+    const isExpired = new Date(expiryDate) < new Date();
+
+    if (isExpired && status === "active") {
+      return "#6B7280"; // Show as completed if expired
+    }
+
     switch (status) {
-      case 'active': return '#10B981';
-      case 'completed': return '#6B7280';
-      case 'expired': return '#EF4444';
-      case 'cancelled': return '#F59E0B';
-      default: return '#6B7280';
+      case "active":
+        return "#10B981";
+      case "completed":
+      case "expired":
+        return "#6B7280";
+      case "cancelled":
+        return "#F59E0B";
+      default:
+        return "#6B7280";
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, expiryDate: string) => {
+    const isExpired = new Date(expiryDate) < new Date();
+
+    if (isExpired && status === "active") {
+      return "checkmark-done-circle"; // Show as completed if expired
+    }
+
     switch (status) {
-      case 'active': return 'checkmark-circle';
-      case 'completed': return 'checkmark-done-circle';
-      case 'expired': return 'time';
-      case 'cancelled': return 'close-circle';
-      default: return 'help-circle';
+      case "active":
+        return "checkmark-circle";
+      case "completed":
+      case "expired":
+        return "checkmark-done-circle";
+      case "cancelled":
+        return "close-circle";
+      default:
+        return "help-circle";
+    }
+  };
+
+  const getDisplayStatus = (status: string, expiryDate: string) => {
+    const isExpired = new Date(expiryDate) < new Date();
+
+    if (isExpired && status === "active") {
+      return "Completed";
+    }
+
+    switch (status) {
+      case "active":
+        return "Active";
+      case "completed":
+        return "Completed";
+      case "expired":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -128,19 +199,24 @@ const PrescriptionsScreen = () => {
       onPress={() => router.push(`/prescriptions/details/${item._id}`)}
     >
       <LinearGradient
-        colors={['#ffffff', '#f8fafc']}
+        colors={["#ffffff", "#f8fafc"]}
         style={styles.cardGradient}
       >
         {/* Header */}
         <View style={styles.cardHeader}>
           <View style={styles.statusContainer}>
             <Ionicons
-              name={getStatusIcon(item.status)}
+              name={getStatusIcon(item.status, item.expiryDate)}
               size={16}
-              color={getStatusColor(item.status)}
+              color={getStatusColor(item.status, item.expiryDate)}
             />
-            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(item.status, item.expiryDate) },
+              ]}
+            >
+              {getDisplayStatus(item.status, item.expiryDate)}
             </Text>
           </View>
           <Text style={styles.dateText}>
@@ -166,21 +242,31 @@ const PrescriptionsScreen = () => {
         <View style={styles.medicationsCount}>
           <Ionicons name="medical" size={16} color="#10B981" />
           <Text style={styles.medicationsText}>
-            {item.medications.length} medication{item.medications.length !== 1 ? 's' : ''}
+            {item.medications.length} medication
+            {item.medications.length !== 1 ? "s" : ""}
           </Text>
         </View>
 
         {/* Expiry Date */}
         <View style={styles.expiryContainer}>
-          <Ionicons 
-            name="calendar-outline" 
-            size={14} 
-            color={new Date(item.expiryDate) < new Date() ? '#EF4444' : '#6B7280'} 
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={
+              new Date(item.expiryDate) < new Date() ? "#EF4444" : "#6B7280"
+            }
           />
-          <Text style={[
-            styles.expiryText,
-            { color: new Date(item.expiryDate) < new Date() ? '#EF4444' : '#6B7280' }
-          ]}>
+          <Text
+            style={[
+              styles.expiryText,
+              {
+                color:
+                  new Date(item.expiryDate) < new Date()
+                    ? "#EF4444"
+                    : "#6B7280",
+              },
+            ]}
+          >
             Expires: {formatDate(item.expiryDate)}
           </Text>
         </View>
@@ -193,28 +279,38 @@ const PrescriptionsScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderFilterButton = (filter: FilterType, label: string, count: number) => (
+  const renderFilterButton = (
+    filter: FilterType,
+    label: string,
+    count: number
+  ) => (
     <TouchableOpacity
       style={[
         styles.filterButton,
-        activeFilter === filter && styles.filterButtonActive
+        activeFilter === filter && styles.filterButtonActive,
       ]}
       onPress={() => handleFilterChange(filter)}
     >
-      <Text style={[
-        styles.filterButtonText,
-        activeFilter === filter && styles.filterButtonTextActive
-      ]}>
+      <Text
+        style={[
+          styles.filterButtonText,
+          activeFilter === filter && styles.filterButtonTextActive,
+        ]}
+      >
         {label}
       </Text>
-      <View style={[
-        styles.countBadge,
-        activeFilter === filter && styles.countBadgeActive
-      ]}>
-        <Text style={[
-          styles.countBadgeText,
-          activeFilter === filter && styles.countBadgeTextActive
-        ]}>
+      <View
+        style={[
+          styles.countBadge,
+          activeFilter === filter && styles.countBadgeActive,
+        ]}
+      >
+        <Text
+          style={[
+            styles.countBadgeText,
+            activeFilter === filter && styles.countBadgeTextActive,
+          ]}
+        >
           {count}
         </Text>
       </View>
@@ -222,11 +318,20 @@ const PrescriptionsScreen = () => {
   );
 
   const getFilterCounts = () => {
+    const activePrescriptions = prescriptions.filter((p) => {
+      const isExpired = new Date(p.expiryDate) < new Date();
+      return p.status === "active" && !isExpired;
+    });
+
+    const completedPrescriptions = prescriptions.filter((p) => {
+      const isExpired = new Date(p.expiryDate) < new Date();
+      return p.status === "completed" || p.status === "expired" || isExpired;
+    });
+
     return {
       all: prescriptions.length,
-      active: prescriptions.filter(p => p.status === 'active').length,
-      completed: prescriptions.filter(p => p.status === 'completed').length,
-      expired: prescriptions.filter(p => p.status === 'expired').length,
+      active: activePrescriptions.length,
+      completed: completedPrescriptions.length,
     };
   };
 
@@ -250,16 +355,22 @@ const PrescriptionsScreen = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={['#10B981', '#059669']} style={styles.header}>
+      <LinearGradient colors={["#10B981", "#059669"]} style={styles.header}>
         <Text style={styles.headerTitle}>My Prescriptions</Text>
         <Text style={styles.headerSubtitle}>
-          {prescriptions.length} total prescription{prescriptions.length !== 1 ? 's' : ''}
+          {prescriptions.length} total prescription
+          {prescriptions.length !== 1 ? "s" : ""}
         </Text>
       </LinearGradient>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+        <Ionicons
+          name="search"
+          size={20}
+          color="#6B7280"
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInput}
           placeholder="Search prescriptions, medications, or doctors..."
@@ -269,7 +380,7 @@ const PrescriptionsScreen = () => {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity
-            onPress={() => handleSearch('')}
+            onPress={() => handleSearch("")}
             style={styles.clearButton}
           >
             <Ionicons name="close-circle" size={20} color="#6B7280" />
@@ -278,11 +389,29 @@ const PrescriptionsScreen = () => {
       </View>
 
       {/* Filter Buttons */}
-      <View style={styles.filtersContainer}>
-        {renderFilterButton('all', 'All', filterCounts.all)}
-        {renderFilterButton('active', 'Active', filterCounts.active)}
-        {renderFilterButton('completed', 'Completed', filterCounts.completed)}
-        {renderFilterButton('expired', 'Expired', filterCounts.expired)}
+      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[
+            { filter: "all", label: "All", count: filterCounts.all },
+            { filter: "active", label: "Active", count: filterCounts.active },
+            {
+              filter: "completed",
+              label: "Completed",
+              count: filterCounts.completed,
+            },
+          ]}
+          keyExtractor={(item) => item.filter}
+          renderItem={({ item }) =>
+            renderFilterButton(
+              item.filter as FilterType,
+              item.label,
+              item.count
+            )
+          }
+          contentContainerStyle={{ gap: 12 }}
+        />
       </View>
 
       {/* Prescriptions List */}
@@ -296,7 +425,7 @@ const PrescriptionsScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#10B981']}
+            colors={["#10B981"]}
             tintColor="#10B981"
           />
         }
@@ -304,13 +433,14 @@ const PrescriptionsScreen = () => {
           <View style={styles.emptyContainer}>
             <MaterialIcons name="medication" size={64} color="#D1D5DB" />
             <Text style={styles.emptyTitle}>
-              {searchQuery ? 'No matching prescriptions' : 'No prescriptions found'}
+              {searchQuery
+                ? "No matching prescriptions"
+                : "No prescriptions found"}
             </Text>
             <Text style={styles.emptyMessage}>
-              {searchQuery 
-                ? 'Try adjusting your search terms'
-                : 'Your prescriptions will appear here when available'
-              }
+              {searchQuery
+                ? "Try adjusting your search terms"
+                : "Your prescriptions will appear here when available"}
             </Text>
           </View>
         }
@@ -322,18 +452,18 @@ const PrescriptionsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   header: {
     paddingTop: 60,
@@ -342,25 +472,25 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontWeight: "bold",
+    color: "#ffffff",
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: "rgba(255, 255, 255, 0.8)",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     marginHorizontal: 20,
     marginTop: -12,
     marginBottom: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -372,58 +502,58 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#374151',
+    color: "#374151",
   },
   clearButton: {
     padding: 4,
   },
   filtersContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     marginBottom: 20,
     gap: 12,
   },
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     gap: 8,
   },
   filterButtonActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: "#10B981",
+    borderColor: "#10B981",
   },
   filterButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontWeight: "500",
+    color: "#6B7280",
   },
   filterButtonTextActive: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
   countBadge: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
     minWidth: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   countBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   countBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: "600",
+    color: "#6B7280",
   },
   countBadgeTextActive: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
   list: {
     flex: 1,
@@ -435,8 +565,8 @@ const styles = StyleSheet.create({
   prescriptionCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -446,93 +576,93 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   statusText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   dateText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   doctorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 12,
   },
   doctorName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: "600",
+    color: "#374151",
   },
   diagnosisContainer: {
     marginBottom: 12,
   },
   diagnosisLabel: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontWeight: "500",
+    color: "#6B7280",
     marginBottom: 2,
   },
   diagnosisText: {
     fontSize: 14,
-    color: '#374151',
+    color: "#374151",
     lineHeight: 20,
   },
   medicationsCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     marginBottom: 8,
   },
   medicationsText: {
     fontSize: 14,
-    color: '#10B981',
-    fontWeight: '500',
+    color: "#10B981",
+    fontWeight: "500",
   },
   expiryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   expiryText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   arrowContainer: {
-    position: 'absolute',
+    position: "absolute",
     right: 20,
-    top: '50%',
+    top: "50%",
     transform: [{ translateY: -10 }],
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingTop: 80,
     paddingHorizontal: 40,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: "600",
+    color: "#374151",
     marginTop: 16,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyMessage: {
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     lineHeight: 24,
   },
 });
