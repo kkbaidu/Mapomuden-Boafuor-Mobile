@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
-import { doctorAppointmentAPI, DoctorAppointmentFilters, AppointmentStats } from '../services/doctorAppointmentAPI';
-import { useAuthContext } from '../contexts/AuthContext';
+import { useEffect, useState } from "react";
+import {
+  doctorAppointmentAPI,
+  DoctorAppointmentFilters,
+  AppointmentStats,
+} from "../services/doctorAppointmentAPI";
+import { useAuthContext } from "../contexts/AuthContext";
 
 export interface Appointment {
   _id: string;
@@ -23,16 +27,22 @@ export interface Appointment {
       certification?: string;
       yearsOfExperience: number;
     }>;
-    experience: number; 
+    experience: number;
     rating: {
       average: number;
       totalReviews: number;
-    }; 
+    };
   };
   appointmentDate: string;
   duration: number;
-  type: 'in_person' | 'video_call' | 'phone_call';
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  type: "in_person" | "video_call" | "phone_call";
+  status:
+    | "pending"
+    | "confirmed"
+    | "in_progress"
+    | "completed"
+    | "cancelled"
+    | "no_show";
   reason: string;
   notes?: string;
   videoCallLink?: string;
@@ -55,28 +65,30 @@ export const useDoctorAppointments = () => {
   const { isAuthenticated, user } = useAuthContext();
 
   const fetchAppointments = async (filters: DoctorAppointmentFilters = {}) => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
+    if (!isAuthenticated || !user || user.role !== "doctor") {
       setLoading(false);
-      return { success: false, error: 'Not authenticated as doctor' };
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
       setError(null);
       setLoading(true);
-      
+
       const defaultFilters: DoctorAppointmentFilters = {
         limit: 50,
         offset: 0,
         ...filters,
       };
 
-      const response = await doctorAppointmentAPI.getDoctorAppointments(defaultFilters);
-      
+      const response = await doctorAppointmentAPI.getDoctorAppointments(
+        defaultFilters
+      );
+
       setAppointments(response.appointments || []);
       return { success: true, data: response };
     } catch (error: any) {
-      console.error('Fetch doctor appointments error:', error);
-      const errorMessage = error.message || 'Failed to fetch appointments';
+      console.error("Fetch doctor appointments error:", error);
+      const errorMessage = error.message || "Failed to fetch appointments";
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -85,8 +97,8 @@ export const useDoctorAppointments = () => {
   };
 
   const fetchStats = async () => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
-      return { success: false, error: 'Not authenticated as doctor' };
+    if (!isAuthenticated || !user || user.role !== "doctor") {
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
@@ -94,7 +106,7 @@ export const useDoctorAppointments = () => {
       setStats(statsData);
       return { success: true, data: statsData };
     } catch (error: any) {
-      console.error('Fetch appointment stats error:', error);
+      console.error("Fetch appointment stats error:", error);
       return { success: false, error: error.message };
     }
   };
@@ -105,87 +117,96 @@ export const useDoctorAppointments = () => {
   };
 
   const getAppointmentById = async (id: string) => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
-      return { success: false, error: 'Not authenticated as doctor' };
+    if (!isAuthenticated || !user || user.role !== "doctor") {
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
       const response = await doctorAppointmentAPI.getDoctorAppointment(id);
       return { success: true, data: response.appointment };
     } catch (error: any) {
-      console.error('Get appointment error:', error);
-      const errorMessage = error.message || 'Failed to fetch appointment';
+      console.error("Get appointment error:", error);
+      const errorMessage = error.message || "Failed to fetch appointment";
       return { success: false, error: errorMessage };
     }
   };
 
-  const updateAppointmentStatus = async (id: string, status: Appointment['status'], notes?: string) => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
-      return { success: false, error: 'Not authenticated as doctor' };
+  const updateAppointmentStatus = async (
+    id: string,
+    status: Appointment["status"],
+    notes?: string
+  ) => {
+    if (!isAuthenticated || !user || user.role !== "doctor") {
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
-      const response = await doctorAppointmentAPI.updateAppointmentStatus(id, { status, notes });
-      
+      const response = await doctorAppointmentAPI.updateAppointmentStatus(id, {
+        status,
+        notes,
+      });
+
       // Update local state
-      setAppointments(prev => 
-        prev.map(apt => 
-          apt._id === id 
-            ? { ...apt, status, notes: notes || apt.notes }
-            : apt
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt._id === id ? { ...apt, status, notes: notes || apt.notes } : apt
         )
       );
-      
+
       // Refresh stats
       await fetchStats();
-      
+
       return { success: true, data: response };
     } catch (error: any) {
-      console.error('Update appointment status error:', error);
-      const errorMessage = error.message || 'Failed to update appointment status';
+      console.error("Update appointment status error:", error);
+      const errorMessage =
+        error.message || "Failed to update appointment status";
       return { success: false, error: errorMessage };
     }
   };
 
-  const filterAppointmentsByStatus = (status?: Appointment['status']) => {
+  const filterAppointmentsByStatus = (status?: Appointment["status"]) => {
     if (!status) return appointments;
-    return appointments.filter(appointment => appointment.status === status);
+    return appointments.filter((appointment) => appointment.status === status);
   };
 
   const getTodayAppointments = () => {
     const today = new Date().toDateString();
-    return appointments.filter(appointment => 
-      new Date(appointment.appointmentDate).toDateString() === today
+    return appointments.filter(
+      (appointment) =>
+        new Date(appointment.appointmentDate).toDateString() === today
     );
   };
 
   const getUpcomingAppointments = () => {
     const now = new Date();
-    return appointments.filter(appointment => 
-      new Date(appointment.appointmentDate) > now
-    ).sort((a, b) => 
-      new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
-    );
+    return appointments
+      .filter((appointment) => new Date(appointment.appointmentDate) > now)
+      .sort(
+        (a, b) =>
+          new Date(a.appointmentDate).getTime() -
+          new Date(b.appointmentDate).getTime()
+      );
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'doctor') {
+    if (isAuthenticated && user && user.role === "doctor") {
       fetchAppointments();
       fetchStats();
     }
   }, [isAuthenticated, user?.role]);
 
   const debugAppointments = async () => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
-      return { success: false, error: 'Not authenticated as doctor' };
+    if (!isAuthenticated || !user || user.role !== "doctor") {
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
       const debugData = await doctorAppointmentAPI.debugAppointments();
-      console.log('Debug data:', debugData);
+      console.log("Debug data:", debugData);
       return { success: true, data: debugData };
     } catch (error: any) {
-      console.error('Debug appointments error:', error);
+      console.error("Debug appointments error:", error);
       return { success: false, error: error.message };
     }
   };

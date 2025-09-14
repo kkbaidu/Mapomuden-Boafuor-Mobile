@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { patientAPI, Patient, PatientFilters } from '../services/patientAPI';
-import { useAuthContext } from '../contexts/AuthContext';
+import { useState, useEffect } from "react";
+import { patientAPI, Patient, PatientFilters } from "../services/patientAPI";
+import { useAuthContext } from "../contexts/AuthContext";
 
 export const usePatients = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -10,22 +10,22 @@ export const usePatients = () => {
   const { isAuthenticated, user } = useAuthContext();
 
   const fetchPatients = async (filters: PatientFilters = {}) => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
+    if (!isAuthenticated || !user || user.role !== "doctor") {
       setLoading(false);
-      return { success: false, error: 'Not authenticated as doctor' };
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
       setError(null);
       setLoading(true);
-      
+
       const response = await patientAPI.getDoctorPatients(filters);
       setPatients(response.patients);
       setTotal(response.total);
       return { success: true, data: response };
     } catch (error: any) {
-      console.error('Fetch patients error:', error);
-      const errorMessage = error.message || 'Failed to fetch patients';
+      console.error("Fetch patients error:", error);
+      const errorMessage = error.message || "Failed to fetch patients";
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -34,15 +34,15 @@ export const usePatients = () => {
   };
 
   const getPatientDetails = async (patientId: string) => {
-    if (!isAuthenticated || user?.role !== 'doctor') {
-      return { success: false, error: 'Not authenticated as doctor' };
+    if (!isAuthenticated || !user || user.role !== "doctor") {
+      return { success: false, error: "Not authenticated as doctor" };
     }
 
     try {
       const response = await patientAPI.getPatientDetails(patientId);
       return { success: true, data: response };
     } catch (error: any) {
-      console.error('Get patient details error:', error);
+      console.error("Get patient details error:", error);
       return { success: false, error: error.message };
     }
   };
@@ -56,7 +56,7 @@ export const usePatients = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'doctor') {
+    if (isAuthenticated && user && user.role === "doctor") {
       fetchPatients();
     }
   }, [isAuthenticated, user?.role]);

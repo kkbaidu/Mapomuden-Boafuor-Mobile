@@ -23,7 +23,7 @@ type FilterType = "all" | "active" | "completed";
 
 const PrescriptionsScreen = () => {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthContext();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthContext();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [filteredPrescriptions, setFilteredPrescriptions] = useState<
     Prescription[]
@@ -41,13 +41,15 @@ const PrescriptionsScreen = () => {
       let response;
 
       // Use different API calls based on user role
-      if (user.role === "doctor") {
+      if (user?.role === "doctor") {
         response = await prescriptionAPI.getDoctorPrescriptions();
-      } else {
+      } else if (user?._id) {
         // For patients, use the general endpoint which will filter by patient automatically
         response = await prescriptionAPI.getDoctorPrescriptions({
           patientId: user._id,
         });
+      } else {
+        throw new Error("User not properly authenticated");
       }
 
       if (response && response.prescriptions) {
@@ -351,6 +353,36 @@ const PrescriptionsScreen = () => {
   }
 
   const filterCounts = getFilterCounts();
+
+  // Don't render if user is not loaded
+  if (authLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#10B981" />
+        <Text style={{ marginTop: 16, color: "#6B7280" }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ color: "#EF4444", fontSize: 16 }}>
+          Please log in to view prescriptions
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

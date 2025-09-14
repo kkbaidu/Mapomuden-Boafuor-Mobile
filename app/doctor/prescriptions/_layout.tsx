@@ -1,33 +1,35 @@
 // app/doctor/prescriptions/_layout.tsx
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function PrescriptionsLayout() {
   return (
     <Stack
       screenOptions={{
         headerTitleStyle: {
-          fontWeight: '600',
+          fontWeight: "600",
           fontSize: 18,
         },
         headerShadowVisible: false,
-        headerTintColor: '#fff',
+        headerTintColor: "#fff",
         headerStyle: {
-          backgroundColor: '#2563EB',
+          backgroundColor: "#2563EB",
         },
       }}
     >
-      <Stack.Screen 
-        name="index" 
-        options={{ 
-          title: 'Prescriptions',
+      <Stack.Screen
+        name="index"
+        options={{
+          title: "Prescriptions",
           headerShown: false, // Custom header in component
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="create" 
-        options={{ 
-          headerShown: false, // Let nested screens handle headers
-        }} 
+      <Stack.Screen
+        name="create/[patientId]"
+        options={{
+          title: "Create Prescriptions",
+          headerShown: true, // Let nested screens handle headers
+          headerBackTitle: "Back",
+        }}
       />
     </Stack>
   );

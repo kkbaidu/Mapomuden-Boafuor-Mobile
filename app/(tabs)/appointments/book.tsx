@@ -138,7 +138,7 @@ export default function BookAppointmentScreen() {
 
       const appointmentData: CreateAppointmentData = {
         doctorId: selectedDoctor._id,
-        doctorUserId: selectedDoctor.user._id,
+        doctorUserId: selectedDoctor.user?._id || selectedDoctor._id, // Fallback to doctorId if user._id is not available
         appointmentDate: appointmentDateTime,
         type: selectedType as "in_person" | "video_call" | "phone_call",
         reason: reason.trim(),
