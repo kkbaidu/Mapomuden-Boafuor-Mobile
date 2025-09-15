@@ -28,7 +28,6 @@ export default function PrescriptionsLayout() {
         options={{
           title: "Create Prescriptions",
           headerShown: true, // Let nested screens handle headers
-          headerBackTitle: "Back",
         }}
       />
     </Stack>
