@@ -105,7 +105,7 @@ export default function DoctorLayout() {
       <Tabs.Screen
         name="ai-chat"
         options={{
-          // title: 'Profile',
+          title: "AI Assistant",
           tabBarIcon: ({ color, focused }) => (
             <View
               style={[
@@ -113,8 +113,8 @@ export default function DoctorLayout() {
                 focused && styles.iconContainerActive,
               ]}
             >
-              <Ionicons
-                name={focused ? "chatbubbles" : "chatbubbles-outline"}
+              <FontAwesome5
+                name="brain"
                 size={24}
                 color={focused ? "#ffffff" : color}
               />

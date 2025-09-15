@@ -94,7 +94,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: "AI Chat",
+          title: "AI Doctor",
           tabBarIcon: ({ color, focused }) => (
             <View
               style={[
@@ -102,9 +102,9 @@ export default function TabsLayout() {
                 focused && styles.iconContainerActive,
               ]}
             >
-              <Ionicons
-                name={focused ? "chatbubbles" : "chatbubbles-outline"}
-                size={24}
+              <FontAwesome5
+                name="brain"
+                size={20}
                 color={focused ? "#ffffff" : color}
               />
             </View>

@@ -1,8 +1,8 @@
-import { useAuthContext } from '@/contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useAuthContext } from "@/contexts/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,18 +15,19 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import Markdown from 'react-native-markdown-display';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import Markdown from "react-native-markdown-display";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const base_url = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
+const base_url =
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
 
 interface Message {
   id: string;
-  sender: 'user' | 'ai';
+  sender: "user" | "ai";
   content: string;
   timestamp: Date;
-  type?: 'text' | 'image';
+  type?: "text" | "image";
   metadata?: {
     aiModel?: string;
     confidence?: number;
@@ -41,18 +42,18 @@ interface ChatSession {
 }
 
 export default function ChatScreen() {
-  const { token, isAuthenticated, user } = useAuthContext()
+  const { token, isAuthenticated, user } = useAuthContext();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { session_id } = useLocalSearchParams<{ 
-      session_id: string
-    }>();
+  const { session_id } = useLocalSearchParams<{
+    session_id: string;
+  }>();
 
   // Initialize chat session
   useEffect(() => {
@@ -63,12 +64,12 @@ export default function ChatScreen() {
 
   // If session_id is provided, load that session
   useEffect(() => {
-    console.log("Session id: "+ session_id)
-  if (session_id && isAuthenticated && token) {
-    setSessionId(session_id as string);
-    initializeChatSession(false, session_id as string); // Pass sessionId
-  }
-}, [session_id, isAuthenticated, token]);
+    console.log("Session id: " + session_id);
+    if (session_id && isAuthenticated && token) {
+      setSessionId(session_id as string);
+      initializeChatSession(false, session_id as string); // Pass sessionId
+    }
+  }, [session_id, isAuthenticated, token]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -79,59 +80,64 @@ export default function ChatScreen() {
     }
   }, [messages]);
 
-  const initializeChatSession = async (newSession: boolean, existingSessionId?: string) => {
-  try {
-    setIsLoading(true);
-    
-    const requestBody = newSession 
-      ? { title: 'Health Chat', newSession: true }
-      : { sessionId: existingSessionId || sessionId }; // Use existing or current sessionId
+  const initializeChatSession = async (
+    newSession: boolean,
+    existingSessionId?: string
+  ) => {
+    try {
+      setIsLoading(true);
 
-    const response = await axios.post(
-      `${base_url}/chat/session`,
-      requestBody,
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
+      const requestBody = newSession
+        ? { title: "Health Chat", newSession: true }
+        : { sessionId: existingSessionId || sessionId }; // Use existing or current sessionId
 
-    const { chatSession } = response.data;
-    setSessionId(chatSession._id);
-    
-    // Transform messages for display
-    const transformedMessages = chatSession.messages.map((msg: any, index: number) => ({
-      id: `${index}`,
-      sender: msg.sender === 'AI' || msg.sender === 'ai' ? 'ai' : 'user',
-      content: msg.content,
-      timestamp: new Date(msg.timestamp),
-      type: msg.type?.toLowerCase() || 'text',
-      metadata: msg.metadata
-    }));
-    
-    setMessages(transformedMessages);
-  } catch (error) {
-    console.error('Failed to initialize chat session:', error);
-    Alert.alert('Error', 'Failed to start chat session. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+      const response = await axios.post(
+        `${base_url}/chat/session`,
+        requestBody,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const { chatSession } = response.data;
+      setSessionId(chatSession._id);
+
+      // Transform messages for display
+      const transformedMessages = chatSession.messages.map(
+        (msg: any, index: number) => ({
+          id: `${index}`,
+          sender: msg.sender === "AI" || msg.sender === "ai" ? "ai" : "user",
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          type: msg.type?.toLowerCase() || "text",
+          metadata: msg.metadata,
+        })
+      );
+
+      setMessages(transformedMessages);
+    } catch (error) {
+      console.error("Failed to initialize chat session:", error);
+      Alert.alert("Error", "Failed to start chat session. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const sendMessage = async () => {
-    if (!inputText.trim() || !sessionId || isTyping) return
+    if (!inputText.trim() || !sessionId || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      sender: 'user',
-      type: 'text',
+      sender: "user",
+      type: "text",
       content: inputText.trim(),
       timestamp: new Date(),
     };
 
     // Add user message immediately
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     const messageToSend = inputText.trim();
-    setInputText('');
+    setInputText("");
     setIsTyping(true);
     Keyboard.dismiss();
 
@@ -141,107 +147,106 @@ export default function ChatScreen() {
         {
           sessionId,
           message: messageToSend,
-          type: 'text'
+          type: "text",
         },
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       const { aiMessage } = response.data;
-      
+
       // Add AI response
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
-        sender: 'ai',
+        sender: "ai",
         content: aiMessage.content,
         timestamp: new Date(aiMessage.timestamp),
-        type: 'text',
-        metadata: aiMessage.metadata
+        type: "text",
+        metadata: aiMessage.metadata,
       };
 
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages((prev) => [...prev, aiMsg]);
     } catch (error) {
-      console.error('Failed to send message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
-      
+      console.error("Failed to send message:", error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+
       // Remove user message on failure
-      setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+      setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
     } finally {
       setIsTyping(false);
     }
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
   const renderMessage = (message: Message) => {
-  const isUser = message.sender === 'user';
+    const isUser = message.sender === "user";
 
-  return (
-    <View
-      key={message.id}
-      className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}
-    >
-      <View className="flex-row items-end max-w-[80%]">
-        {!isUser && (
-          <View className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-green-500 items-center justify-center mr-2">
-            <Ionicons name="medical" size={16} color="white" />
-          </View>
-        )}
+    return (
+      <View
+        key={message.id}
+        className={`mb-4 ${isUser ? "items-end" : "items-start"}`}
+      >
+        <View className="flex-row items-end max-w-[80%]">
+          {!isUser && (
+            <View className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-green-500 items-center justify-center mr-2">
+              <Ionicons name="medical" size={16} color="white" />
+            </View>
+          )}
 
-        <View>
-          <View
-            className={`rounded-2xl px-4 py-3 ${
-              isUser
-                ? 'bg-blue-600 rounded-br-md'
-                : 'bg-gray-100 rounded-bl-md border border-gray-200'
-            }`}
-          >
-            <Markdown
-              style={{
-                body: {
-                  color: isUser ? '#FFFFFF' : '#1F2937',
-                  fontSize: 16,
-                  lineHeight: 20,
-                },
-                bullet_list: { paddingLeft: 10 },
-                ordered_list: { paddingLeft: 10 },
-              }}
+          <View>
+            <View
+              className={`rounded-2xl px-4 py-3 ${
+                isUser
+                  ? "bg-blue-600 rounded-br-md"
+                  : "bg-gray-100 rounded-bl-md border border-gray-200"
+              }`}
             >
-              {message.content}
-            </Markdown>
-          </View>
+              <Markdown
+                style={{
+                  body: {
+                    color: isUser ? "#FFFFFF" : "#1F2937",
+                    fontSize: 16,
+                    lineHeight: 20,
+                  },
+                  bullet_list: { paddingLeft: 10 },
+                  ordered_list: { paddingLeft: 10 },
+                }}
+              >
+                {message.content}
+              </Markdown>
+            </View>
 
-          <Text
-            className={`text-xs text-gray-500 mt-1 ${
-              isUser ? 'text-right' : 'text-left'
-            }`}
-          >
-            {formatTime(message.timestamp)}
-            {message.metadata?.confidence && (
+            <Text
+              className={`text-xs text-gray-500 mt-1 ${
+                isUser ? "text-right" : "text-left"
+              }`}
+            >
+              {formatTime(message.timestamp)}
+              {/* {message.metadata?.confidence && (
               <Text className="ml-2">
                 • {Math.round(message.metadata.confidence * 1)}% confidence
               </Text>
-            )}
-          </Text>
-        </View>
-
-        {isUser && (
-          <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center ml-2">
-            <Ionicons name="person" size={16} color="white" />
+            )} */}
+            </Text>
           </View>
-        )}
-      </View>
-    </View>
-  );
-};
 
+          {isUser && (
+            <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center ml-2">
+              <Ionicons name="person" size={16} color="white" />
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
 
   const renderTypingIndicator = () => {
     if (!isTyping) return null;
@@ -252,7 +257,7 @@ export default function ChatScreen() {
           <View className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-green-500 items-center justify-center mr-2">
             <Ionicons name="medical" size={16} color="white" />
           </View>
-          
+
           <View className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3 border border-gray-200">
             <View className="flex-row items-center">
               <ActivityIndicator size="small" color="#2563EB" />
@@ -278,9 +283,9 @@ export default function ChatScreen() {
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {/* Messages */}
         <ScrollView
@@ -295,7 +300,15 @@ export default function ChatScreen() {
         </ScrollView>
 
         {/* Input Area */}
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 10) + (Platform.OS === 'ios' ? 85 : 65) }]}>
+        <View
+          style={[
+            styles.inputContainer,
+            {
+              paddingBottom:
+                Math.max(insets.bottom, 10) + (Platform.OS === "ios" ? 85 : 65),
+            },
+          ]}
+        >
           <View style={styles.inputWrapper}>
             <View style={styles.textInputContainer}>
               <TextInput
@@ -308,15 +321,16 @@ export default function ChatScreen() {
                 maxLength={1000}
               />
             </View>
-            
+
             <TouchableOpacity
               onPress={sendMessage}
               disabled={!inputText.trim() || isTyping}
               style={[
                 styles.sendButton,
                 {
-                  backgroundColor: inputText.trim() && !isTyping ? '#2563EB' : '#D1D5DB'
-                }
+                  backgroundColor:
+                    inputText.trim() && !isTyping ? "#2563EB" : "#D1D5DB",
+                },
               ]}
             >
               {isTyping ? (
@@ -326,10 +340,10 @@ export default function ChatScreen() {
               )}
             </TouchableOpacity>
           </View>
-          
+
           <Text style={styles.disclaimer}>
-            This AI assistant provides general health information only. 
-            Consult healthcare professionals for medical advice.
+            This AI assistant provides general health information only. Consult
+            healthcare professionals for medical advice.
           </Text>
         </View>
       </KeyboardAvoidingView>
@@ -337,11 +351,10 @@ export default function ChatScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -354,56 +367,56 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   inputContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: "#E5E7EB",
     paddingHorizontal: 16,
     paddingTop: 12,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     marginBottom: 8,
   },
   textInputContainer: {
     flex: 1,
     minHeight: 44,
     maxHeight: 100,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginRight: 12,
   },
   textInput: {
     fontSize: 16,
-    color: '#1F2937',
-    textAlignVertical: 'center',
+    color: "#1F2937",
+    textAlignVertical: "center",
     minHeight: 28,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   disclaimer: {
     fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 8,
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingText: {
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 8,
   },
 });
