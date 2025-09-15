@@ -40,6 +40,13 @@ export interface AuthState {
 }
 
 export const useAuth = () => {
+  // Helper to normalize backend user shape (backend returns id but frontend expects _id)
+  const normalizeUser = (u: any) => {
+    if (!u) return u;
+    const _id = u._id || u.id || u.userId; // fallback chain
+    return { ...u, _id };
+  };
+
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     token: null,
@@ -58,22 +65,32 @@ export const useAuth = () => {
       const userStr = await SecureStore.getItemAsync("user");
 
       if (token && userStr) {
-        const user = JSON.parse(userStr);
+        const storedUser = normalizeUser(JSON.parse(userStr));
 
-        // Verify token with backend
         try {
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          const response = await axios.get(`${base_url}/auth/verify`);
+          // Use existing backend route /auth/user (no /auth/verify endpoint available)
+          const response = await axios.get(`${base_url}/auth/user`);
+          const refreshedUser = normalizeUser(response.data);
 
           setAuthState({
-            user: response.data.user || user,
+            user: refreshedUser || storedUser,
             token,
             isLoading: false,
             isAuthenticated: true,
           });
         } catch (error) {
-          // Token is invalid, clear storage
-          await logout();
+          // Fall back to stored user if token works locally, else logout
+          if (storedUser && storedUser._id) {
+            setAuthState({
+              user: storedUser,
+              token,
+              isLoading: false,
+              isAuthenticated: true,
+            });
+          } else {
+            await logout();
+          }
         }
       } else {
         setAuthState({
@@ -100,26 +117,26 @@ export const useAuth = () => {
         email,
         password,
       });
-
       const { token, user } = response.data;
+      const normalized = normalizeUser(user);
 
       // Store credentials securely
       await SecureStore.setItemAsync("token", token);
-      await SecureStore.setItemAsync("user", JSON.stringify(user));
+      await SecureStore.setItemAsync("user", JSON.stringify(normalized));
 
       // Set axios default header
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       // Update state
       setAuthState({
-        user,
+        user: normalized,
         token,
         isLoading: false,
         isAuthenticated: true,
       });
 
       // Navigate to appropriate screen based on user role
-      if (user.role === "doctor") {
+      if (normalized.role === "doctor") {
         router.replace("/doctor/dashboard");
       } else {
         router.replace("/(tabs)");
@@ -143,31 +160,30 @@ export const useAuth = () => {
     role?: "patient" | "doctor";
   }) => {
     try {
-      // 10.21.18.10
       const response = await axios.post(`${base_url}/auth/register`, {
         ...userData,
         role: userData.role || "patient",
       });
-
       const { token, user } = response.data;
+      const normalized = normalizeUser(user);
 
       // Store credentials securely
       await SecureStore.setItemAsync("token", token);
-      await SecureStore.setItemAsync("user", JSON.stringify(user));
+      await SecureStore.setItemAsync("user", JSON.stringify(normalized));
 
       // Set axios default header
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       // Update state
       setAuthState({
-        user,
+        user: normalized,
         token,
         isLoading: false,
         isAuthenticated: true,
       });
 
       // Navigate to appropriate screen
-      if (user.role === "doctor") {
+      if (normalized.role === "doctor") {
         router.replace("/doctor/dashboard");
       } else {
         router.replace("/(tabs)");
@@ -210,8 +226,7 @@ export const useAuth = () => {
   const updateUser = async (userData: Partial<User>) => {
     try {
       const response = await axios.put(`${base_url}/auth/user`, userData);
-
-      const updatedUser = response.data.user;
+      const updatedUser = normalizeUser(response.data.user);
 
       // Update stored user data
       await SecureStore.setItemAsync("user", JSON.stringify(updatedUser));
@@ -278,14 +293,18 @@ export const useAuth = () => {
         resetToken,
         password,
       });
+      const { token, user } = response.data;
+      const normalized = normalizeUser(user);
 
       // Auto-login after successful password reset
-      const { token, user } = response.data;
       await AsyncStorage.setItem("authToken", token);
+      await SecureStore.setItemAsync("token", token);
+      await SecureStore.setItemAsync("user", JSON.stringify(normalized));
+
       setAuthState((prev) => ({
         ...prev,
         token,
-        user,
+        user: normalized,
         isAuthenticated: true,
       }));
 
@@ -321,19 +340,19 @@ export const useAuth = () => {
         email,
         otp,
       });
-
       const { token, user } = response.data;
+      const normalized = normalizeUser(user);
 
       // Store credentials securely
       await SecureStore.setItemAsync("token", token);
-      await SecureStore.setItemAsync("user", JSON.stringify(user));
+      await SecureStore.setItemAsync("user", JSON.stringify(normalized));
 
       // Set axios default header
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       // Update state
       setAuthState({
-        user,
+        user: normalized,
         token,
         isLoading: false,
         isAuthenticated: true,
@@ -356,11 +375,12 @@ export const useAuth = () => {
           Authorization: `Bearer ${authState.token}`,
         },
       });
+      const normalized = normalizeUser(response?.data);
 
-      setAuthState({
-        ...authState,
-        user: response?.data,
-      });
+      setAuthState((prev) => ({
+        ...prev,
+        user: normalized,
+      }));
     } catch (error) {
       console.error("Failed to fetch user:", error);
     }

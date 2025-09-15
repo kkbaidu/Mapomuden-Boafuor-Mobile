@@ -36,25 +36,35 @@ const PrescriptionsScreen = () => {
   const fetchPrescriptions = async () => {
     if (!user) return;
 
+    // Ensure _id is available (backend may send id only)
+    const effectiveUserId = (user as any)._id || (user as any).id;
+
     try {
       setLoading(true);
       let response;
 
-      // Use different API calls based on user role
       if (user?.role === "doctor") {
         response = await prescriptionAPI.getDoctorPrescriptions();
-      } else if (user?._id) {
-        // For patients, use the general endpoint which will filter by patient automatically
-        response = await prescriptionAPI.getDoctorPrescriptions({
-          patientId: user._id,
-        });
+      } else if (effectiveUserId) {
+        // Pass no patientId (backend auto-filters) OR adjust locally if needed
+        response = await prescriptionAPI.getDoctorPrescriptions();
       } else {
         throw new Error("User not properly authenticated");
       }
 
       if (response && response.prescriptions) {
-        setPrescriptions(response.prescriptions);
-        setFilteredPrescriptions(response.prescriptions);
+        // If patient, filter on client side since backend route returns by current auth user
+        const list =
+          user.role === "patient"
+            ? response.prescriptions.filter((p: any) => {
+                const pid =
+                  (p.patient && (p.patient._id || p.patient.id || p.patient)) ||
+                  null;
+                return pid === effectiveUserId;
+              })
+            : response.prescriptions;
+        setPrescriptions(list);
+        setFilteredPrescriptions(list);
       }
     } catch (error: any) {
       console.error("Fetch prescriptions error:", error);
