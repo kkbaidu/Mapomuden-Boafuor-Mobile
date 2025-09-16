@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,67 @@ import { useLocalSearchParams, router } from "expo-router";
 import { useAuthContext } from "../../../../contexts/AuthContext";
 import { medicalRecordAPI } from "../../../../services/medicalRecordAPI";
 
+// Stable memoized input component (prevents remount causing cursor loss)
+const VitalInput = memo(function VitalInput({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = "numeric",
+  suffix,
+  autoFocus = false,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder?: string;
+  keyboardType?: any;
+  suffix?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text
+        style={{
+          fontSize: 14,
+          fontWeight: "600",
+          color: "#374151",
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: "#fff",
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          borderRadius: 8,
+          paddingHorizontal: 12,
+        }}
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          keyboardType={keyboardType}
+          style={{ flex: 1, height: 44, fontSize: 16, color: "#111827" }}
+          placeholderTextColor="#9CA3AF"
+          autoFocus={autoFocus}
+          autoCorrect={false}
+          autoCapitalize="none"
+          underlineColorAndroid="transparent"
+        />
+        {suffix && (
+          <Text style={{ marginLeft: 8, color: "#6B7280" }}>{suffix}</Text>
+        )}
+      </View>
+    </View>
+  );
+});
+
 export default function AddVitalSignsScreen() {
   const { id: patientId } = useLocalSearchParams();
   const { user, isAuthenticated } = useAuthContext();
@@ -25,6 +86,15 @@ export default function AddVitalSignsScreen() {
   const [height, setHeight] = useState("");
   const [oxygenSaturation, setOxygenSaturation] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Stable callbacks (avoid new fn identity each render)
+  const onChangeSystolic = useCallback((t: string) => setSystolic(t), []);
+  const onChangeDiastolic = useCallback((t: string) => setDiastolic(t), []);
+  const onChangeHeartRate = useCallback((t: string) => setHeartRate(t), []);
+  const onChangeTemperature = useCallback((t: string) => setTemperature(t), []);
+  const onChangeWeight = useCallback((t: string) => setWeight(t), []);
+  const onChangeHeight = useCallback((t: string) => setHeight(t), []);
+  const onChangeOxygen = useCallback((t: string) => setOxygenSaturation(t), []);
 
   if (!isAuthenticated || user?.role !== "doctor") {
     return (
@@ -88,51 +158,6 @@ export default function AddVitalSignsScreen() {
     }
   };
 
-  const Input = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType = "numeric",
-    suffix,
-  }: any) => (
-    <View style={{ marginBottom: 14 }}>
-      <Text
-        style={{
-          fontSize: 14,
-          fontWeight: "600",
-          color: "#374151",
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </Text>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "#fff",
-          borderWidth: 1,
-          borderColor: "#E5E7EB",
-          borderRadius: 8,
-          paddingHorizontal: 12,
-        }}
-      >
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          keyboardType={keyboardType}
-          style={{ flex: 1, height: 44, fontSize: 16, color: "#111827" }}
-          placeholderTextColor="#9CA3AF"
-        />
-        {suffix && (
-          <Text style={{ marginLeft: 8, color: "#6B7280" }}>{suffix}</Text>
-        )}
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
       <View
@@ -183,19 +208,20 @@ export default function AddVitalSignsScreen() {
           </Text>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Input
+              <VitalInput
                 label="Systolic"
                 value={systolic}
-                onChangeText={setSystolic}
+                onChangeText={onChangeSystolic}
                 placeholder="120"
                 suffix="mmHg"
+                autoFocus
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Input
+              <VitalInput
                 label="Diastolic"
                 value={diastolic}
-                onChangeText={setDiastolic}
+                onChangeText={onChangeDiastolic}
                 placeholder="80"
                 suffix="mmHg"
               />
@@ -221,25 +247,25 @@ export default function AddVitalSignsScreen() {
           >
             Other Vitals
           </Text>
-          <Input
+          <VitalInput
             label="Heart Rate"
             value={heartRate}
-            onChangeText={setHeartRate}
+            onChangeText={onChangeHeartRate}
             placeholder="70"
             suffix="bpm"
           />
-          <Input
+          <VitalInput
             label="Temperature"
             value={temperature}
-            onChangeText={setTemperature}
+            onChangeText={onChangeTemperature}
             placeholder="36.8"
             suffix="°C"
             keyboardType="decimal-pad"
           />
-          <Input
+          <VitalInput
             label="Oxygen Saturation"
             value={oxygenSaturation}
-            onChangeText={setOxygenSaturation}
+            onChangeText={onChangeOxygen}
             placeholder="98"
             suffix="%"
           />
@@ -263,18 +289,18 @@ export default function AddVitalSignsScreen() {
           >
             Anthropometrics
           </Text>
-          <Input
+          <VitalInput
             label="Weight"
             value={weight}
-            onChangeText={setWeight}
+            onChangeText={onChangeWeight}
             placeholder="70"
             suffix="kg"
             keyboardType="decimal-pad"
           />
-          <Input
+          <VitalInput
             label="Height"
             value={height}
-            onChangeText={setHeight}
+            onChangeText={onChangeHeight}
             placeholder="175"
             suffix="cm"
             keyboardType="decimal-pad"
