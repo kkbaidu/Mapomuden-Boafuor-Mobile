@@ -730,7 +730,7 @@ export default function PatientDetails() {
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={{
                 backgroundColor: "#fff",
                 borderRadius: 12,
@@ -767,7 +767,7 @@ export default function PatientDetails() {
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         )}
       </ScrollView>
